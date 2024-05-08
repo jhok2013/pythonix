@@ -6,3 +6,5 @@ from pythonix.internals.types import Fn, FnOnce
 from pythonix.res import Res
 import pythonix.req as req
 import pythonix.curry as curry
+
+from pythonix.res import Ok, Err
