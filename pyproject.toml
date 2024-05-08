@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "pythonix"
+version = "1.0.2"
+description = ""
+authors = ["jhok2013 <jhok2013@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.31.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
