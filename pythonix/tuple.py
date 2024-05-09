@@ -9,5 +9,5 @@ from pythonix.internals.tuple import (
     push,
     push_left,
     insert,
-    remove
+    remove,
 )

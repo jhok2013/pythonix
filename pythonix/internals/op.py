@@ -5,17 +5,18 @@ from typing import Callable, Iterable, Iterator, Any, SupportsIndex, TypeVar
 from functools import reduce
 from pythonix.internals.res import null_and_error_safe
 
-Val = TypeVar('Val')
-SecondVal = TypeVar('SecondVal')
-NewVal = TypeVar('NewVal')
+Val = TypeVar("Val")
+SecondVal = TypeVar("SecondVal")
+NewVal = TypeVar("NewVal")
+
 
 def filterx(using: Callable[[Val], bool]) -> Callable[[Iterable[Val]], Iterator[Val]]:
     """
     Filter over an `Iterable` with a function that takes each of its elements and returns a True or False.
     True evaluations are kept while False are not kept in the result.
     """
-    def get_data(iterable: Iterable[Val]) -> filter[Val]:
 
+    def get_data(iterable: Iterable[Val]) -> filter[Val]:
         return filter(using, iterable)
 
     return get_data
@@ -23,21 +24,23 @@ def filterx(using: Callable[[Val], bool]) -> Callable[[Iterable[Val]], Iterator[
 
 def mapx(using: Callable[[Val], NewVal]) -> Callable[[Iterable[Val]], Iterator[NewVal]]:
     """
-    Run the `using` function over an `Iterable` and return an `Iterator` containing the result 
+    Run the `using` function over an `Iterable` and return an `Iterator` containing the result
     """
-    def get_data(iterable: Iterable[Val]) -> map[NewVal]:
 
+    def get_data(iterable: Iterable[Val]) -> map[NewVal]:
         return map(using, iterable)
 
     return get_data
 
 
-def reducex(using: Callable[[Val, SecondVal], NewVal]) -> Callable[[Iterable[Val | SecondVal]], Iterator[NewVal]]:
+def reducex(
+    using: Callable[[Val, SecondVal], NewVal]
+) -> Callable[[Iterable[Val | SecondVal]], Iterator[NewVal]]:
     """
-    Run a function that takes two arguments over an `Iterable` to produce a single result. 
+    Run a function that takes two arguments over an `Iterable` to produce a single result.
     """
-    def get_data(iterable: Iterable[Val | SecondVal]) -> reduce[NewVal]:
 
+    def get_data(iterable: Iterable[Val | SecondVal]) -> reduce[NewVal]:
         return reduce(using, iterable)
 
     return get_data

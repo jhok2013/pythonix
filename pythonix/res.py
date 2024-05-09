@@ -17,6 +17,7 @@ from pythonix.internals.res import (
     ok,
     or_else,
     safe,
+    map_err,
     unwrap,
     some,
     Res,
@@ -28,5 +29,5 @@ from pythonix.internals.res import (
     Ok,
     Err,
     null_and_error_safe,
-    q
+    q,
 )

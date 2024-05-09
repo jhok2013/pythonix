@@ -32,5 +32,5 @@ from pythonix.internals.req import (
     set_params,
     set_url,
     send,
-    Response
+    Response,
 )

@@ -6,5 +6,5 @@ from pythonix.internals.pair import (
     get_value,
     set_key,
     set_value,
-    map
+    map,
 )

@@ -3,12 +3,11 @@ from typing import Callable, Protocol, Tuple, overload, TypeVar, Generic
 from pythonix.internals import trail
 from pythonix.internals.trail import Trail, Log
 
-Val = TypeVar('Val')
-NewVal = TypeVar('NewVal')
+Val = TypeVar("Val")
+NewVal = TypeVar("NewVal")
 
 
 class HasInner(Generic[Val], Protocol):
-
     inner: Val
 
 
@@ -35,6 +34,13 @@ class Bind(Generic[Val]):
 
     def __init__(self, inner: Val) -> None:
         self.inner = inner
+    
+    @property
+    def to_do(self) -> Do[Val]:
+        """
+        Converts the `Bind` pipe to a `Do` pipe
+        """
+        return Do(self.inner)
 
     def run(self, using: Callable[[Val], NewVal]) -> Bind[NewVal]:
         """
@@ -85,6 +91,13 @@ class Do(Generic[Val]):
         """
         using(self.inner)
         return self
+    
+    @property
+    def to_bind(self) -> Bind[Val]:
+        """
+        Converts the `Do` pipe to a `Bind` pipe
+        """
+        return Bind(self.inner)
 
     def __call__(self, using: Callable[[Val], NewVal]) -> Do[Val]:
         """
@@ -115,12 +128,18 @@ class Blaze(Generic[Val]):
                 self.logs = logs
 
     @overload
-    def __call__(self, using: Callable[[Val], trail.Trail[NewVal]], *logs: Log) -> Blaze[NewVal]: ...
+    def __call__(
+        self, using: Callable[[Val], trail.Trail[NewVal]], *logs: Log
+    ) -> Blaze[NewVal]:
+        ...
 
     @overload
-    def __call__(self, using: Callable[[Val], NewVal], *logs: Log) -> Blaze[NewVal]: ...
+    def __call__(self, using: Callable[[Val], NewVal], *logs: Log) -> Blaze[NewVal]:
+        ...
 
-    def __call__(self, using: Callable[[Val], trail.Trail[NewVal] | NewVal], *logs: Log) -> Blaze[NewVal]:
+    def __call__(
+        self, using: Callable[[Val], trail.Trail[NewVal] | NewVal], *logs: Log
+    ) -> Blaze[NewVal]:
         """
         Call the function and attach the logs from the function `Trail` and the optional logs
         to the new instance of `Blaze` containing the result.

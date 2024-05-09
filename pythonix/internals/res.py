@@ -6,8 +6,8 @@ from pythonix.internals.types import Fn
 P = ParamSpec("P")
 
 UnwrapErr = ValueError("Attempted to retrieve an Err from an Ok")
-Val = TypeVar('Val')
-NewVal = TypeVar('NewVal')
+Val = TypeVar("Val")
+NewVal = TypeVar("NewVal")
 ErrVal = TypeVar("ErrVal", bound="Exception")
 NewErrVal = TypeVar("NewErrVal", bound="Exception")
 
@@ -139,8 +139,8 @@ def is_ok_and(predicate: Fn[Val, bool]) -> Callable[[Res[Val, ErrVal]], bool]:
     """
     Return `True` if the `Res` is `Ok` and the `predicate` evaluates to `True`.
     """
-    def inner(res: Res[Val, ErrVal]) -> bool:
 
+    def inner(res: Res[Val, ErrVal]) -> bool:
         match res:
             case Ok(t):
                 return predicate(t)
@@ -154,8 +154,8 @@ def is_err_and(predicate: Fn[ErrVal, bool]) -> Callable[[Res[Val, ErrVal]], bool
     """
     Return `True` if the `Res` is `Err` and the `predicate` evaluates to `True`
     """
-    def inner(res: Res[Val, ErrVal]) -> bool:
 
+    def inner(res: Res[Val, ErrVal]) -> bool:
         match res:
             case Err(e):
                 return predicate(e)
@@ -180,8 +180,8 @@ def unwrap_or(default: Val) -> Fn[Res[Val, ErrVal], Val]:
     """
     Return the `Ok` value if `Ok`, else return the default
     """
-    def inner(res: Res[Val, ErrVal]) -> Val:
 
+    def inner(res: Res[Val, ErrVal]) -> Val:
         match res:
             case Ok(val):
                 return val
@@ -195,8 +195,8 @@ def unwrap_or_else(on_err: Callable[[], Val]) -> Fn[Res[Val, ErrVal], Val]:
     """
     Return the `Ok` value if `Ok`, else run the `on_err` function that returns the same type.
     """
-    def inner(res: Res[Val, ErrVal]) -> Val:
 
+    def inner(res: Res[Val, ErrVal]) -> Val:
         match res:
             case Ok(val):
                 return val
@@ -221,6 +221,7 @@ def map(using: Fn[Val, NewVal]) -> Fn[Res[Val, ErrVal], Res[NewVal, ErrVal]]:
     """
     Run the function on the `Ok` if `Ok`, else return the current `Err`
     """
+
     def inner(res: Res[Val, ErrVal]) -> Res[NewVal, ErrVal]:
         match res:
             case Ok(t):
@@ -231,14 +232,17 @@ def map(using: Fn[Val, NewVal]) -> Fn[Res[Val, ErrVal], Res[NewVal, ErrVal]]:
     return inner
 
 
-def map_or(using: Fn[Val, NewVal]) -> Callable[[NewVal], Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]]:
+def map_or(
+    using: Fn[Val, NewVal]
+) -> Callable[[NewVal], Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]]:
     """
     Runs the function on the `Ok` or return the `default` if `Err`
     """
-    def get_default(default: NewVal) -> Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]:
 
+    def get_default(
+        default: NewVal,
+    ) -> Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]:
         def inner(res: Res[Val, ErrVal]) -> Res[NewVal, ErrVal]:
-
             match res:
                 case Ok(t):
                     return ok(using(t))(ErrVal)
@@ -250,14 +254,34 @@ def map_or(using: Fn[Val, NewVal]) -> Callable[[NewVal], Callable[[Res[Val, ErrV
     return get_default
 
 
-def map_catch(using: Callable[[Val], NewVal]) -> Callable[[type[ErrVal]], Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]]:
+def map_err(
+    using: Fn[ErrVal, NewErrVal]
+) -> Callable[[Res[Val, ErrVal]], Res[Val, NewErrVal]]:
+    """
+    Runs the function on the `ErrVal` if in `Err` or returns the current `Ok`
+    """
+
+    def inner(res: Res[Val, ErrVal]) -> Res[Val, ErrVal]:
+        match res:
+            case Err(e):
+                return err(Val)(using(e))
+            case _:
+                return cast(Res[Val, NewErrVal], res)
+
+    return inner
+
+
+def map_catch(
+    using: Callable[[Val], NewVal]
+) -> Callable[[type[ErrVal]], Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]]:
     """
     Runs the function that could fail if `Ok`, else return the current `Err`
     """
-    def get_catch(catch: type[ErrVal]) -> Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]:
 
+    def get_catch(
+        catch: type[ErrVal],
+    ) -> Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]:
         def inner(res: Res[Val, ErrVal]) -> Res[NewVal, ErrVal]:
-
             match res:
                 case Ok(t):
                     try:
@@ -272,14 +296,19 @@ def map_catch(using: Callable[[Val], NewVal]) -> Callable[[type[ErrVal]], Callab
     return get_catch
 
 
-def map_or_else(using: Fn[Val, NewVal]) -> Callable[[Callable[[], NewVal]], Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]]:
+def map_or_else(
+    using: Fn[Val, NewVal]
+) -> Callable[
+    [Callable[[], NewVal]], Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]
+]:
     """
     Runs the provided function if `Ok`, or runs the default function if `Err`
     """
-    def get_default(default: Callable[[], NewVal]) -> Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]:
 
+    def get_default(
+        default: Callable[[], NewVal]
+    ) -> Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]:
         def inner(res: Res[Val, ErrVal]) -> Res[NewVal, ErrVal]:
-
             match res:
                 case Ok(t):
                     return ok(using(t))(ErrVal)
@@ -291,10 +320,13 @@ def map_or_else(using: Fn[Val, NewVal]) -> Callable[[Callable[[], NewVal]], Call
     return get_default
 
 
-def and_then(using: Fn[Val, Res[NewVal, ErrVal]]) -> Fn[Res[Val, ErrVal], Res[NewVal, ErrVal]]:
+def and_then(
+    using: Fn[Val, Res[NewVal, ErrVal]]
+) -> Fn[Res[Val, ErrVal], Res[NewVal, ErrVal]]:
     """
     Runs the function that returns a new `Res` if `Ok`, else return the current `Err`
     """
+
     def inner(res: Res[Val, ErrVal]) -> Res[NewVal, ErrVal]:
         match res:
             case Ok(t):
@@ -305,10 +337,13 @@ def and_then(using: Fn[Val, Res[NewVal, ErrVal]]) -> Fn[Res[Val, ErrVal], Res[Ne
     return inner
 
 
-def or_else(using: Fn[ErrVal, Res[NewVal, NewErrVal]]) -> Fn[Res[Val, ErrVal], Res[Val, NewErrVal]]:
+def or_else(
+    using: Fn[ErrVal, Res[NewVal, NewErrVal]]
+) -> Fn[Res[Val, ErrVal], Res[Val, NewErrVal]]:
     """
     Runs the function that returns a new `Res` if in `Err`, else it will return the current `Ok`
     """
+
     def inner(res: Res[Val, ErrVal]) -> Res[Val, NewErrVal]:
         match res:
             case Err(e):
@@ -324,13 +359,17 @@ def and_then_catch(using: Fn[Val, NewVal]):
     Runs the function that could fail, catching the specified error and returning a new `Res`.
     Will only be ran if `Ok`, else it will return its current `Err`
     """
-    def get_catch(catch: type[NewErrVal]) -> Fn[Res[Val, ErrVal], Res[NewVal, ErrVal | NewErrVal]]:
 
+    def get_catch(
+        catch: type[NewErrVal],
+    ) -> Fn[Res[Val, ErrVal], Res[NewVal, ErrVal | NewErrVal]]:
         def inner(res: Res[Val, ErrVal]) -> Res[NewVal, ErrVal | NewErrVal]:
             match res:
                 case Ok(t):
                     try:
-                        return cast(Res[NewVal, ErrVal | NewErrVal], ok(using(t))(ErrVal))
+                        return cast(
+                            Res[NewVal, ErrVal | NewErrVal], ok(using(t))(ErrVal)
+                        )
                     except catch as f:
                         return cast(Res[NewVal, ErrVal | NewErrVal], err(NewVal)(f))
                 case Err(f):
@@ -346,8 +385,8 @@ def map_err(using: Fn[ErrVal, NewErrVal]):
     Changes the internal `Err` using the function if in an `Err` state. Otherwise it returns
     the `Ok`
     """
-    def inner(res: Res[Val, ErrVal]) -> Res[Val, NewErrVal]:
 
+    def inner(res: Res[Val, ErrVal]) -> Res[Val, NewErrVal]:
         match res:
             case Err(e):
                 return err(Val)(using(e))
@@ -357,12 +396,14 @@ def map_err(using: Fn[ErrVal, NewErrVal]):
     return inner
 
 
-def and_res(new_res: Res[NewVal, ErrVal]) -> Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]:
+def and_res(
+    new_res: Res[NewVal, ErrVal]
+) -> Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]:
     """
     Returns the provided result if the old one is `Ok`
     """
-    def inner(old_res: Res[Val, ErrVal]) -> Res[NewVal, ErrVal]:
 
+    def inner(old_res: Res[Val, ErrVal]) -> Res[NewVal, ErrVal]:
         match old_res:
             case Ok():
                 return new_res
@@ -376,8 +417,8 @@ def or_res[T, F](new_res: Res[T, F]) -> Callable[[Res[T, ErrVal]], Res[T, F]]:
     """
     Returns the provided result if the current one is an `Err`
     """
-    def inner(old_res: Res[T, ErrVal]) -> Res[T, F]:
 
+    def inner(old_res: Res[T, ErrVal]) -> Res[T, F]:
         match old_res:
             case Ok():
                 return cast(Res[T, F], old_res)
@@ -405,9 +446,7 @@ def safe(err_type: type[ErrVal]):
     """
 
     def inner(using: Callable[P, NewVal]) -> Callable[P, Res[NewVal, ErrVal]]:
-
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[NewVal, ErrVal]:
-
             try:
                 return cast(Res[NewVal, ErrVal], ok(using(*args, **kwargs))(err_type))
             except err_type as e:
@@ -424,7 +463,6 @@ def null_safe(using: Callable[P, NewVal | None]):
     """
 
     def inner(*args: P.args, **kwargs: P.kwargs) -> Res[NewVal, Nil]:
-
         return some(using(*args, **kwargs))
 
     return inner
@@ -436,9 +474,7 @@ def null_and_error_safe(*err_types: type[ErrVal]):
     """
 
     def inner(using: Callable[P, Val]):
-
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[Val, Nil]:
-
             try:
                 return some(using(*args, **kwargs))
             except err_types as e:

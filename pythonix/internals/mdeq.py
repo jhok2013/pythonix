@@ -10,8 +10,9 @@ from typing import Iterable, Generic, TypeVar
 from pythonix.res import null_and_error_safe, safe, Ok
 from pythonix.curry import two, three
 
-Val = TypeVar('Val')
-NewVal = TypeVar('NewVal')
+Val = TypeVar("Val")
+NewVal = TypeVar("NewVal")
+
 
 class MDeq(Generic[Val], object):
     """
@@ -118,7 +119,6 @@ def last(deq: MDeq[Val]) -> Val:
     return deq.inner[-1]
 
 
-
 @two
 @null_and_error_safe(IndexError)
 def at(index: int, deq: MDeq[Val]) -> Val:
@@ -164,7 +164,6 @@ def index(find: Val, start: int = 1):
 
     @null_and_error_safe(ValueError)
     def inner(deq: MDeq[Val]) -> int:
-
         return deq.inner.index(find, start)
 
     return inner

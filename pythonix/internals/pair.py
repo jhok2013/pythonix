@@ -7,25 +7,30 @@ from pythonix.internals.types import Fn
 from pythonix.internals.curry import two
 
 
-Val = TypeVar('Val')
-NewVal = TypeVar('NewVal')
+Val = TypeVar("Val")
+NewVal = TypeVar("NewVal")
 KeyStr: TypeAlias = str
+
 
 class Pair(Generic[Val], NamedTuple):
     """
     A typed key value pair whose key is a `str`
     """
+
     key: str
     value: Val
 
+
 Pairs: TypeAlias = Tuple[Pair[Val], ...]
+
 
 @two
 def new(key: KeyStr, value: Val) -> Pair[Val]:
     """
-    Create a new key value `Pair` safely 
+    Create a new key value `Pair` safely
     """
     return Pair(key, value)
+
 
 @two
 def set_key(key: KeyStr, pair: Pair[Val]) -> Pair[Val]:
@@ -48,6 +53,7 @@ def get_value(pair: Pair[Val]) -> Val:
     Retrieves the `value` of a provided `Pair`
     """
     return pair.value
+
 
 def get_key(pair: Pair[Val]) -> KeyStr:
     """

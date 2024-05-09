@@ -6,7 +6,6 @@ from pythonix.prelude import Fn
 
 
 class TestTrail(TestCase):
-
     blaze = t.Blaze(5, t.info("Starting"))
     bind = p.Bind(t.new(t.info("Starting in Bind"))(5))
 
@@ -27,4 +26,4 @@ class TestTrail(TestCase):
 
         for log in logs:
             print(log)
-        self.fail()
+        self.assertEqual(len(logs), 3)

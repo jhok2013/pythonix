@@ -5,23 +5,25 @@ from pythonix.res import Res
 import pythonix.pair as pair
 from functools import singledispatch
 from requests import (
-    get      as _get,
-    post     as _post,
-    put      as _put,
-    delete   as _delete,
+    get as _get,
+    post as _post,
+    put as _put,
+    delete as _delete,
     Response as OGResponse,
-    HTTPError
+    HTTPError,
 )
 from pythonix.internals.pair import Pair, Pairs
 from pythonix.internals.pipe import Bind
 from pythonix import res
 
-P = ParamSpec('P')
+P = ParamSpec("P")
+
 
 class Response(NamedTuple):
     """
     Parsed response from an HTTP request.
     """
+
     url: str
     body: bytes
     status: int
@@ -47,35 +49,45 @@ class Request(NamedTuple):
     """
     Request type to be sent via an HTTP method
     """
+
     url: str
     headers: Pairs[bytes]
     params: Pairs[bytes]
     data: Pairs[bytes]
 
-RequestType = TypeVar('RequestType', bound='Request')
+
+RequestType = TypeVar("RequestType", bound="Request")
+
 
 class Get(Request):
     """
     An HTTP request set as a `GET`
     """
+
     method: Callable[P, Response] = _get
+
 
 class Post(Request):
     """
     An HTTP request set as a `POST`
     """
+
     method: Callable[P, Response] = _post
+
 
 class Put(Request):
     """
     An HTTP request set as a `PUT`
     """
+
     method: Callable[P, Response] = _put
+
 
 class Delete(Request):
     """
     An HTTP request set as a `DELETE`
     """
+
     method: Callable[P, Response] = _delete
 
 
@@ -83,9 +95,10 @@ class Delete(Request):
 def to_bytes(value: int) -> bytes:
     return bytes(value)
 
+
 @to_bytes.register(str)
 def _(value: str) -> bytes:
-    return bytes(value, 'utf-8')
+    return bytes(value, "utf-8")
 
 
 def set_value_to_bytes(keyvalue: Pair[str | int]) -> Pair[bytes]:
@@ -96,6 +109,7 @@ def get(url: str):
     """
     Set the URL for the request type
     """
+
     def get_headers(*headers: Pair[str | int]):
         """
         Add key value pairs to represent headers
@@ -107,6 +121,7 @@ def get(url: str):
         )
         ```
         """
+
         def get_params(*params: Pair[str | int]):
             """
             Add key value pairs to represent params. Same methodology as for headers.
@@ -115,7 +130,7 @@ def get(url: str):
                 url,
                 tuple(mapx(set_value_to_bytes)(headers)),
                 tuple(mapx(set_value_to_bytes)(params)),
-                tuple()
+                tuple(),
             )
 
         return get_params
@@ -127,6 +142,7 @@ def post(url: str):
     """
     Set the URL for the request type
     """
+
     def get_headers(*headers: Pair[str | int]):
         """
         Add key value pairs to represent headers
@@ -138,10 +154,12 @@ def post(url: str):
         )
         ```
         """
+
         def get_params(*params: Pair[str | int]):
             """
             Add key value pairs to represent params. Same methodology as for headers.
             """
+
             def get_data(*data: Pair[str | int]):
                 """
                 Add key value pairs to represent data for the request
@@ -150,7 +168,7 @@ def post(url: str):
                     url,
                     tuple(mapx(set_value_to_bytes)(headers)),
                     tuple(mapx(set_value_to_bytes)(params)),
-                    tuple(mapx(set_value_to_bytes)(data))
+                    tuple(mapx(set_value_to_bytes)(data)),
                 )
 
             return get_data
@@ -159,10 +177,12 @@ def post(url: str):
 
     return get_headers
 
+
 def put(url: str):
     """
     Set the URL for the request type
     """
+
     def get_headers(*headers: Pair[str | int]):
         """
         Add key value pairs to represent headers
@@ -174,10 +194,12 @@ def put(url: str):
         )
         ```
         """
+
         def get_params(*params: Pair[str | int]):
             """
             Add key value pairs to represent params. Same methodology as for headers.
             """
+
             def get_data(*data: Pair[str | int]):
                 """
                 Add key value pairs to represent data for the request
@@ -186,7 +208,7 @@ def put(url: str):
                     url,
                     tuple(mapx(set_value_to_bytes)(headers)),
                     tuple(mapx(set_value_to_bytes)(params)),
-                    tuple(mapx(set_value_to_bytes)(data))
+                    tuple(mapx(set_value_to_bytes)(data)),
                 )
 
             return get_data
@@ -200,6 +222,7 @@ def delete(url: str):
     """
     Set the URL for the request type
     """
+
     def get_headers(*headers: Pair[str | int]):
         """
         Add key value pairs to represent headers
@@ -211,12 +234,7 @@ def delete(url: str):
         )
         ```
         """
-        return Post(
-            url,
-            tuple(mapx(set_value_to_bytes)(headers)),
-            tuple(),
-            tuple()
-        )
+        return Post(url, tuple(mapx(set_value_to_bytes)(headers)), tuple(), tuple())
 
     return get_headers
 
@@ -225,8 +243,8 @@ def set_url(url: str):
     """
     Recreates the given request type with a new URL
     """
+
     def get_content[R: (Request)](content: R) -> R:
-        
         return content.__class__(url, content.headers, content.params, content.data)
 
     return get_content
@@ -236,6 +254,7 @@ def set_headers(*headers: Pair[str | int]):
     """
     Recreates the given request types with a new set of headers
     """
+
     def get_content[R: (Request)](content: R) -> R:
         return content.__class__(content.url, headers, content.params, content.data)
 
@@ -246,8 +265,8 @@ def set_params(*params: Pair[str | int]):
     """
     Recreates the given request type with a new set of headers
     """
-    def get_content[R: (Request)](content: R) -> R:
 
+    def get_content[R: (Request)](content: R) -> R:
         return content.__class__(content.url, content.headers, params, content.data)
 
     return get_content
@@ -257,8 +276,8 @@ def set_data(*data: Pair[str | int]):
     """
     Recreates the given request type with a new set of data
     """
-    def get_content[R: (Request)](content: R) -> R:
 
+    def get_content[R: (Request)](content: R) -> R:
         return content.__class__(content.url, content.headers, content.params, data)
 
     return get_content
@@ -270,16 +289,13 @@ def body(content: RequestType) -> Tuple[Pair[bytes], ...]:
     """
     return content.headers + content.params + content.data
 
+
 def send(request: RequestType) -> Res[Response, HTTPError]:
     """
     Sends the provided `Request` and then parses its response, capturing any errors that occur.
     """
-    return (
-        Bind(request)
-        (body)
-        (lambda body: {'url': request.url} | {k: v for k, v in body})
-        (lambda kwargs: request.method(**kwargs))
-        (check_status)
-        (res.map(parse_response))
-        .inner
-    )
+    return Bind(request)(body)(
+        lambda body: {"url": request.url} | {k: v for k, v in body}
+    )(lambda kwargs: request.method(**kwargs))(check_status)(
+        res.map(parse_response)
+    ).inner
