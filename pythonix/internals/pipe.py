@@ -36,7 +36,7 @@ class Bind(Generic[Val]):
         self.inner = inner
     
     @property
-    def to_do(self) -> Do[Val]:
+    def do(self) -> Do[Val]:
         """
         Converts the `Bind` pipe to a `Do` pipe
         """
@@ -93,7 +93,7 @@ class Do(Generic[Val]):
         return self
     
     @property
-    def to_bind(self) -> Bind[Val]:
+    def bind(self) -> Bind[Val]:
         """
         Converts the `Do` pipe to a `Bind` pipe
         """

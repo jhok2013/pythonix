@@ -1,7 +1,7 @@
 """
 Functions used to operate over data structures
 """
-from typing import Callable, Iterable, Iterator, Any, SupportsIndex, TypeVar
+from typing import Callable, Iterable, Iterator, Any, SupportsIndex, TypeVar, Mapping
 from functools import reduce
 from pythonix.internals.res import null_and_error_safe
 
@@ -16,7 +16,7 @@ def filterx(using: Callable[[Val], bool]) -> Callable[[Iterable[Val]], Iterator[
     True evaluations are kept while False are not kept in the result.
     """
 
-    def get_data(iterable: Iterable[Val]) -> filter[Val]:
+    def get_data(iterable: Iterable[Val]) -> Iterator[Val]:
         return filter(using, iterable)
 
     return get_data
@@ -24,10 +24,11 @@ def filterx(using: Callable[[Val], bool]) -> Callable[[Iterable[Val]], Iterator[
 
 def mapx(using: Callable[[Val], NewVal]) -> Callable[[Iterable[Val]], Iterator[NewVal]]:
     """
-    Run the `using` function over an `Iterable` and return an `Iterator` containing the result
+    Run the `using` function over an `Iterable` and return an `Iterator` containing the result.
     """
 
-    def get_data(iterable: Iterable[Val]) -> map[NewVal]:
+    def get_data(iterable: Iterable[Val]) -> Iterator[NewVal]:
+
         return map(using, iterable)
 
     return get_data
@@ -40,7 +41,7 @@ def reducex(
     Run a function that takes two arguments over an `Iterable` to produce a single result.
     """
 
-    def get_data(iterable: Iterable[Val | SecondVal]) -> reduce[NewVal]:
+    def get_data(iterable: Iterable[Val | SecondVal]) -> NewVal:
         return reduce(using, iterable)
 
     return get_data
@@ -94,3 +95,15 @@ def item(index: SupportsIndex):
         return iterable[index]
 
     return inner
+
+
+def arg(val: Val):
+    '''
+    Applies a single argument to a function and returns its result.
+    Useful for piping an argument into a function via `Bind` or `Do`
+    '''
+    def get_op(op: Callable[[Val], NewVal]):
+
+        return op(arg)
+    
+    return get_op

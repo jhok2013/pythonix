@@ -1,13 +1,17 @@
-from pythonix.internals.tuple import (
+from pythonix.internals.tup import (
     count_occurrences,
     extend,
     extend_left,
+    extend_right,
     get,
     first,
     index,
     last,
     push,
     push_left,
+    push_right,
     insert,
     remove,
+    new,
+    Side
 )

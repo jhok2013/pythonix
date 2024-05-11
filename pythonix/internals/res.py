@@ -486,3 +486,4 @@ def null_and_error_safe(*err_types: type[ErrVal]):
 
 
 q = unwrap
+qe = unwrap_err

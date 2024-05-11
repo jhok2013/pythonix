@@ -18,8 +18,8 @@ class TestPipes(TestCase):
     def test_to_do(self) -> None:
         (
             self.bind
-            .to_do(lambda _: True)(lambda _: 'Hello')
-            .to_bind(lambda _: True)(self.assertTrue)
+            .do(lambda _: True)(lambda _: 'Hello')
+            .bind(lambda _: True)(self.assertTrue)
         )
 
     def test_do(self) -> None:
