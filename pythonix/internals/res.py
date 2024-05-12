@@ -450,7 +450,7 @@ def safe(*err_type: type[ErrVal]):
     @safe(ValueError, TypeError)
     def func_1():
         return 'success'
-
+    
     def func_2():
         try:
             return ok('success')(ValueError | TypeError)
@@ -458,16 +458,16 @@ def safe(*err_type: type[ErrVal]):
             return err(str)(e)
     ```
     """
-
     def inner(using: Callable[P, NewVal]) -> Callable[P, Res[NewVal, ErrVal]]:
+
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[NewVal, ErrVal]:
             try:
-                return cast(Res[NewVal, ErrVal], ok(using(*args, **kwargs))(ErrVal))
+                return cast(Res[NewVal, ErrVal],ok(using(*args, **kwargs))(ErrVal))
             except err_type as e:
                 return cast(Res[NewVal, ErrVal], err(NewVal)(e))
-
+            
         return wrapper
-
+    
     return inner
 
 
@@ -500,7 +500,7 @@ def null_and_error_safe(*err_types: type[ErrVal]):
 
 
 def combine_errors(to: NewErrVal, inherit_message: bool = False):
-    """
+    '''
     Decorator function used to convert function that return a `Res[Val, ErrVal]` to `Res[Val, NewErrVal]`, consuming
     the references to the original captured errors. Useful for when a function could throw a lot of errors and you
     need to convert them into one error instead.
@@ -511,17 +511,17 @@ def combine_errors(to: NewErrVal, inherit_message: bool = False):
         if not isinstance(s, str):
             raise TypeError('Must be str')
         return s
-
+    
     done: Res[str, CustomError] = do_thing('ok')
-
-    """
-
+    
+    '''
+    
     def inner(using: Callable[P, Ok[Val] | Err[ErrVal]]):
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[Val, NewErrVal]:
-            return map_err(lambda e: to.__class__(str(e)) if inherit_message else to)(
-                using(*args, **kwargs)
-            )
 
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[Val, NewErrVal]:
+            
+            return map_err(lambda e: to.__class__(str(e)) if inherit_message else to)(using(*args, **kwargs)) 
+        
         return wrapper
 
     return inner
