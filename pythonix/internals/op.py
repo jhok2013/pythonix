@@ -8,12 +8,12 @@ from typing import (
     Any,
     SupportsIndex,
     TypeVar,
-    Mapping,
     overload,
     MutableSequence,
     MutableMapping,
 )
-from functools import reduce, singledispatch
+from functools import reduce
+from copy import deepcopy
 from pythonix.internals.res import null_and_error_safe, safe, combine_errors
 from operator import setitem
 from pythonix.internals.curry import three
@@ -158,24 +158,46 @@ def assign_item(
     val: NewVal,
     data: MutableSequence[Val] | MutableMapping[Key, Val],
 ) -> MutableSequence[Val | NewVal] | MutableMapping[Key, Val | NewVal]:
-    @singledispatch
-    def assign(
-        data: MutableSequence[Val], key: SupportsIndex | slice, val: NewVal
-    ) -> MutableSequence[Val | NewVal]:
-        setitem(data, key, val)
-        return data
+    """
+    Safely assigns a new value to a specific index for a mutable data structure, i.e a list or dictionary.
+    Will not panic during failure, rather it will return a `Res` with either the expected value or its Exception.
+    Returns a deepcopy of the original data, treating the mutable sequence like an immutable type.
+    #### Example
+    ```python
+    x: list[str] = ['hello', 'world']
+    ass_res = assign_item(0)('hola')(data)
+    hola_x = res.unwrap(ass_res)
 
-    @assign.register(MutableMapping)
-    def _(
-        data: MutableMapping[Key, Val], key: Key, val: NewVal
-    ) -> MutableMapping[Key, Val | NewVal]:
-        setitem(data, key, val)
-        return data
-
-    return assign(data, key, val)
+    assert x[0] == 'hello'
+    assert hola_x[0] == 'hola'
+    ```
+    """
+    copy: MutableSequence[Val] | MutableMapping[Key, Val] = deepcopy(data)
+    setitem(copy, key, val)
+    return copy
 
 
 @three
 @safe(AttributeError)
 def assign_attr(key: str, val: NewVal, obj: ObjT) -> ObjT:
-    return setattr(obj, key, val)
+    """
+    Safely assigns a new value to an attribute for an object. Will not panic upon failure, but instead
+    returns a `Res` indicating the expected value on success, or the expected `Exception` on failure.
+    Returns a deepcopy of the original object, treating the mutable object like an immutable type.
+    #### Example
+    ```python
+    class Foo(object):
+        def __init__(self, bar):
+            self.bar = bar
+    
+    foo = Foo(0)
+    ass_res = assign_attr('baz')(1)(foo)
+    with_baz = res.unwrap(ass_res)
+
+    assert with_baz.baz == 1
+    assert hasattr(foo, 'baz') == False 
+    ```
+    """
+    copy: ObjT = deepcopy(obj)
+    setattr(copy, key, val)
+    return copy
