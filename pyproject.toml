@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pythonix"
-version = "1.0.3"
+version = "1.0.4"
 description = "Rust and Gleam like functional programming in Python, complete with Results, pipes, and currying"
 authors = ["jhok2013 <jhok2013@gmail.com>"]
 readme = "README.md"
