@@ -13,5 +13,5 @@ from pythonix.internals.tup import (
     insert,
     remove,
     new,
-    Side
+    Side,
 )

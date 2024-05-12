@@ -34,7 +34,7 @@ class Bind(Generic[Val]):
 
     def __init__(self, inner: Val) -> None:
         self.inner = inner
-    
+
     @property
     def do(self) -> Do[Val]:
         """
@@ -91,7 +91,7 @@ class Do(Generic[Val]):
         """
         using(self.inner)
         return self
-    
+
     @property
     def bind(self) -> Bind[Val]:
         """

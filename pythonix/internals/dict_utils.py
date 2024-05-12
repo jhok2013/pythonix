@@ -1,10 +1,12 @@
 from typing import TypeVar, Dict, Callable
-import pythonix.res as res
+from pythonix.res import Ok, Err, Nil
+from pythonix.op import item
 
-Val = TypeVar('Val')
-NewVal = TypeVar('NewVal')
-Key = TypeVar('Key', str, int, float, tuple)
-NewKey = TypeVar('NewKey', str, int, float, tuple)
+Val = TypeVar("Val")
+NewVal = TypeVar("NewVal")
+Key = TypeVar("Key", str, int, float, tuple)
+NewKey = TypeVar("NewKey", str, int, float, tuple)
+
 
 def map_keys(using: Callable[[Key], NewKey]):
     """
@@ -20,10 +22,10 @@ def map_keys(using: Callable[[Key], NewKey]):
     assert upper_keys == ('FIRST', 'SECOND')
     ```
     """
-    def get_dict(dict_obj: Dict[Key, Val]) -> Dict[NewKey, Val]:
 
+    def get_dict(dict_obj: Dict[Key, Val]) -> Dict[NewKey, Val]:
         return {using(k): v for k, v in dict_obj.items()}
-    
+
     return get_dict
 
 
@@ -40,11 +42,11 @@ def map_values(using: Callable[[Val], NewVal]):
     values: tuple[str, ...] = tuple(str_values_dict.values())
     assert values == ('1', '2')
     ```
-    """   
-    def get_dict(dict_obj: Dict[Key, Val]) -> Dict[Key, NewVal]:
+    """
 
+    def get_dict(dict_obj: Dict[Key, Val]) -> Dict[Key, NewVal]:
         return {k: using(v) for k, v in dict_obj.items()}
-    
+
     return get_dict
 
 
@@ -61,10 +63,10 @@ def filter_keys(predicate: Callable[[Key], bool]):
     assert tuple(only_first.items()) == ('First', 1)
     ```
     """
-    def get_dict(dict_obj: Dict[Key, Val]) -> Dict[Key, Val]:
 
+    def get_dict(dict_obj: Dict[Key, Val]) -> Dict[Key, Val]:
         return {k: v for k, v in dict_obj.items() if predicate(k)}
-    
+
     return get_dict
 
 
@@ -81,10 +83,10 @@ def filter_values(predicate: Callable[[Val], bool]):
     assert tuple(evens_only.items()) == ('Second', 2)
     ```
     """
-    def get_dict(dict_obj: Dict[Key, Val]) -> Dict[Key, Val]:
 
+    def get_dict(dict_obj: Dict[Key, Val]) -> Dict[Key, Val]:
         return {k: v for k, v in dict_obj.items() if predicate(v)}
-    
+
     return get_dict
 
 
@@ -98,8 +100,8 @@ def merge(new_dict: Dict[NewKey, NewVal]):
     merged: dict[str | int, str | int] = merge(new)(old)
     ```
     """
-    def get_old(old_dict: Dict[Key, Val]) -> Dict[Key | NewKey, Val | NewVal]:
 
+    def get_old(old_dict: Dict[Key, Val]) -> Dict[Key | NewKey, Val | NewVal]:
         return old_dict | new_dict
 
     return get_old
@@ -110,34 +112,17 @@ def put(key: NewKey):
     Puts a new value into a `dict`.
     #### Example
     ```python
-    data: dict[str, int] = {'hello': 0}    
+    data: dict[str, int] = {'hello': 0}
     updated: dict[str, int] = put('joe')(1)(data)
     ```
     """
-    def get_val(val: NewVal) -> Callable[[Dict[Key, Val]], Dict[Key | NewKey, Val | NewVal]]:
 
+    def get_val(
+        val: NewVal,
+    ) -> Callable[[Dict[Key, Val]], Dict[Key | NewKey, Val | NewVal]]:
         def get_dict(dict_obj: Dict[Key, Val]) -> Dict[Key | NewKey, Val | NewVal]:
-
             return merge(dict_obj)({key: val})
-        
+
         return get_dict
-    
+
     return get_val
-
-
-def get(key: Key):
-    """
-    Safely retrieves a value from the `dict_obj` as an `Ok[Val]` or `Err[Nil]` 
-    #### Example
-    ```python
-    data: dict[str, int] = {'hello': 0}
-    opt: Ok[int] | Err[Nil] = get('hello')(data)
-    value: int = res.unwrap(opt)
-    ```
-    """
-    def get_dict(dict_obj: Dict[Key, Val]) -> res.Ok[Val] | res.Err[res.Nil]:
-
-        return res.some(dict_obj.get(key))
-    
-    return get_dict
-    

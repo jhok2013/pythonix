@@ -1,4 +1,3 @@
-from unittest import TestCase
 from typing import TypeVar, Callable
 
 T1 = TypeVar("T1")

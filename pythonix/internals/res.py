@@ -439,16 +439,30 @@ def flatten(res: Res[Res[Val, ErrVal], NewErrVal]) -> Res[Val, ErrVal | NewErrVa
             return res
 
 
-def safe(err_type: type[ErrVal]):
+def safe(*err_type: type[ErrVal]):
     """
-    Wraps the output `U` of an object or its thrown `Exception` `E` in a
-    `Res[U, E]` object. Handles only one `Exception` at a time.
+    Decorator function used to capture the specified errors and convert them to
+    a `Res[Val, ErrVal]` type. Can capture multiple error types at once and preserves
+    type hints for the `Res`.
+    #### Example
+    ```python
+    # The two functions are equivalent
+    @safe(ValueError, TypeError)
+    def func_1():
+        return 'success'
+
+    def func_2():
+        try:
+            return ok('success')(ValueError | TypeError)
+        except (ValueError, TypeError) as e:
+            return err(str)(e)
+    ```
     """
 
     def inner(using: Callable[P, NewVal]) -> Callable[P, Res[NewVal, ErrVal]]:
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[NewVal, ErrVal]:
             try:
-                return cast(Res[NewVal, ErrVal], ok(using(*args, **kwargs))(err_type))
+                return cast(Res[NewVal, ErrVal], ok(using(*args, **kwargs))(ErrVal))
             except err_type as e:
                 return cast(Res[NewVal, ErrVal], err(NewVal)(e))
 
@@ -479,6 +493,34 @@ def null_and_error_safe(*err_types: type[ErrVal]):
                 return some(using(*args, **kwargs))
             except err_types as e:
                 return map_err(lambda f: Nil(str(f)))(err(Val)(e))
+
+        return wrapper
+
+    return inner
+
+
+def combine_errors(to: NewErrVal, inherit_message: bool = False):
+    """
+    Decorator function used to convert function that return a `Res[Val, ErrVal]` to `Res[Val, NewErrVal]`, consuming
+    the references to the original captured errors. Useful for when a function could throw a lot of errors and you
+    need to convert them into one error instead.
+    #### Example
+    @combine_errors(CustomError)
+    @safe(TypeError, ValueError)
+    def do_thing(s: str) -> str:
+        if not isinstance(s, str):
+            raise TypeError('Must be str')
+        return s
+
+    done: Res[str, CustomError] = do_thing('ok')
+
+    """
+
+    def inner(using: Callable[P, Ok[Val] | Err[ErrVal]]):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[Val, NewErrVal]:
+            return map_err(lambda e: to.__class__(str(e)) if inherit_message else to)(
+                using(*args, **kwargs)
+            )
 
         return wrapper
 
