@@ -16,7 +16,7 @@ from typing import (
 )
 from functools import reduce
 from copy import deepcopy
-from pythonix.internals.res import null_and_error_safe, safe
+from pythonix.internals.res import null_and_error_safe, safe, Res
 from operator import setitem
 
 
@@ -24,7 +24,7 @@ Val = TypeVar("Val")
 SecondVal = TypeVar("SecondVal")
 NewVal = TypeVar("NewVal")
 ObjT = TypeVar("ObjT", bound="object")
-Key = TypeVar("Key", str, int, float, tuple)
+Key = TypeVar("Key", str, int, float, tuple, slice)
 
 
 def filterx(using: Callable[[Val], bool]) -> Callable[[Iterable[Val]], Iterator[Val]]:
@@ -138,7 +138,7 @@ def arg(val: Val):
     return get_op
 
 
-def assign(key: Key | slice):
+def assign(key: Key):
     '''
     Assign a value to a given index or name on any mutable sequence (i.e. `list`), mutable mapping (i.e. `dict`)
     or any mutable object. Returns a copy of the updated object wrapped in a `Res` that reflects potential errors.
@@ -163,18 +163,16 @@ def assign(key: Key | slice):
     def get_val(val: NewVal):
 
         @overload
-        @safe(IndexError)
-        def get_obj(sequence: MutableSequence[Val]) -> MutableSequence[Val | NewVal]: ...
+        def get_obj(sequence: MutableSequence[Val]) -> Res[MutableSequence[Val | NewVal], IndexError]: ...
 
         @overload
-        @safe(IndexError, KeyError)
-        def get_obj(mapping: MutableMapping[Key, Val]) -> MutableMapping[Key, Val | NewVal]: ...
+        def get_obj(mapping: MutableMapping[Key, Val]) -> Res[MutableMapping[Key, Val | NewVal], IndexError | KeyError]: ...
 
         @overload
-        @safe(AttributeError)
-        def get_obj(obj: Val) -> Val: ...
+        def get_obj(obj: ObjT) -> Res[ObjT, AttributeError]: ...
 
-        def get_obj(obj: MutableSequence[Val] | MutableMapping[Key, Val] | object):
+        @safe(IndexError, KeyError, AttributeError)
+        def get_obj(obj: MutableSequence[Val] | MutableMapping[Key, Val] | ObjT) -> MutableSequence[Val | NewVal] | MutableMapping[Key, Val | NewVal] | ObjT:
             copy = deepcopy(obj)
             if not isinstance(obj, MutableMapping) and not isinstance(obj, MutableSequence):
                 setattr(copy, key, val)
