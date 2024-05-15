@@ -1,5 +1,4 @@
-from typing import TypeVar, Dict, Callable
-from pythonix.res import Ok, Err, Nil
+from typing import TypeVar, Dict, Callable, Mapping
 from pythonix.op import item
 
 Val = TypeVar("Val")
@@ -126,3 +125,13 @@ def put(key: NewKey):
         return get_dict
 
     return get_val
+
+
+def get(key: Key):
+    '''
+    Retrieves a value from a mapping, returning `Nil` on error
+    '''
+    def get_data(mapping: Mapping[Key, Val]):
+        return item(key)(mapping)
+
+    return get_data

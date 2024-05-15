@@ -90,6 +90,7 @@ class Delete(Request):
 
     method: Callable[P, Response] = _delete
 
+R = TypeVar('R', bound='Request')
 
 @singledispatch
 def to_bytes(value: int) -> bytes:
@@ -244,7 +245,7 @@ def set_url(url: str):
     Recreates the given request type with a new URL
     """
 
-    def get_content[R: (Request)](content: R) -> R:
+    def get_content(content: R) -> R:
         return content.__class__(url, content.headers, content.params, content.data)
 
     return get_content
@@ -255,7 +256,7 @@ def set_headers(*headers: Pair[str | int]):
     Recreates the given request types with a new set of headers
     """
 
-    def get_content[R: (Request)](content: R) -> R:
+    def get_content(content: R) -> R:
         return content.__class__(content.url, headers, content.params, content.data)
 
     return get_content
@@ -266,7 +267,7 @@ def set_params(*params: Pair[str | int]):
     Recreates the given request type with a new set of headers
     """
 
-    def get_content[R: (Request)](content: R) -> R:
+    def get_content(content: R) -> R:
         return content.__class__(content.url, content.headers, params, content.data)
 
     return get_content
@@ -277,7 +278,7 @@ def set_data(*data: Pair[str | int]):
     Recreates the given request type with a new set of data
     """
 
-    def get_content[R: (Request)](content: R) -> R:
+    def get_content(content: R) -> R:
         return content.__class__(content.url, content.headers, content.params, data)
 
     return get_content

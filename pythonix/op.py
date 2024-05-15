@@ -5,7 +5,5 @@ from pythonix.internals.op import (
     attr,
     item,
     arg,
-    assign_attr,
-    assign_item,
-    AssignError,
+    assign
 )

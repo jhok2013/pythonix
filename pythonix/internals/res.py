@@ -1,6 +1,6 @@
 from __future__ import annotations
 from collections.abc import Iterator
-from typing import TypeVar, Generic, NamedTuple, cast, ParamSpec, Callable
+from typing import TypeVar, Generic, NamedTuple, cast, ParamSpec, Callable, TypeAlias
 from pythonix.internals.types import Fn
 
 P = ParamSpec("P")
@@ -27,7 +27,7 @@ class Ok(Generic[Val], NamedTuple):
     Useful for pattern matching on a function that returns `Ok[T] | Err[E]`
     ### Example
     ```python
-    success: Res[int, ValueError] = ok(5)(ValueError)
+    success: Res[int, ValueError] = ok(ValueError)(5)
     match success:
         case Ok(t):
             assert t == 5
@@ -40,7 +40,7 @@ class Ok(Generic[Val], NamedTuple):
 
     def __iter__(self) -> Iterator[Val | None]:
         return iter((self.inner, None))
-
+    
 
 class Err(Generic[ErrVal], NamedTuple):
     """
@@ -63,7 +63,7 @@ class Err(Generic[ErrVal], NamedTuple):
         return iter((None, self.inner))
 
 
-type Res[T, E] = Ok[T] | Err[E]
+Res: TypeAlias = Ok[Val] | Err[ErrVal]
 
 
 def err(ok_type: type[Val]) -> Callable[[ErrVal], Res[Val, ErrVal]]:
@@ -84,7 +84,7 @@ def err(ok_type: type[Val]) -> Callable[[ErrVal], Res[Val, ErrVal]]:
     return get_err
 
 
-def ok(ok_obj: Val) -> Callable[[type[ErrVal]], Res[Val, ErrVal]]:
+def ok(err_type: type[ErrVal]) -> Callable[[Val], Res[Val, ErrVal]]:
     """
     Sets the `Ok` inner value of the `Res`
     #### Example
@@ -93,23 +93,23 @@ def ok(ok_obj: Val) -> Callable[[type[ErrVal]], Res[Val, ErrVal]]:
     ```
     """
 
-    def get_err(err_type: type[ErrVal]) -> Res[Val, ErrVal]:
+    def get_err(ok_obj: Val) -> Res[Val, ErrVal]:
         """
         Sets the `Err` type of the `Res`
         """
-        return Ok(ok_obj)
+        return cast(Res[Val, ErrVal], Ok(ok_obj))
 
     return get_err
 
 
-def some(inner: Val | None) -> Res[Val, Nil]:
+def some(inner: Val | None) -> Ok[Val] | Err[Nil]:
     """
     Converts the passed in value `T | None` to `Err[Nil]` if None,
     else `Ok[T]`. Useful for checking for null values before they
     cause unexpected defects.
     """
     if inner is not None:
-        return ok(inner)(Nil)
+        return ok(Nil)(inner)
     return err(Val)(Nil())
 
 
@@ -171,7 +171,7 @@ def unwrap(result: Res[Val, ErrVal]) -> Val:
     """
     match result:
         case Ok(value):
-            return value
+            return cast(Val, value)
         case Err(e):
             raise e
 
@@ -225,7 +225,7 @@ def map(using: Fn[Val, NewVal]) -> Fn[Res[Val, ErrVal], Res[NewVal, ErrVal]]:
     def inner(res: Res[Val, ErrVal]) -> Res[NewVal, ErrVal]:
         match res:
             case Ok(t):
-                return ok(using(t))(ErrVal)
+                return ok(ErrVal)(using(t))
             case _:
                 return cast(Res[NewVal, ErrVal], res)
 
@@ -245,9 +245,9 @@ def map_or(
         def inner(res: Res[Val, ErrVal]) -> Res[NewVal, ErrVal]:
             match res:
                 case Ok(t):
-                    return ok(using(t))(ErrVal)
+                    return ok(ErrVal)(using(t))
                 case _:
-                    return ok(default)(ErrVal)
+                    return ok(ErrVal)(default)
 
         return inner
 
@@ -285,7 +285,7 @@ def map_catch(
             match res:
                 case Ok(t):
                     try:
-                        return ok(using(t))(ErrVal)
+                        return ok(ErrVal)(using(t))
                     except catch as e:
                         return err(NewVal)(e)
                 case Err(e):
@@ -311,9 +311,9 @@ def map_or_else(
         def inner(res: Res[Val, ErrVal]) -> Res[NewVal, ErrVal]:
             match res:
                 case Ok(t):
-                    return ok(using(t))(ErrVal)
+                    return ok(ErrVal)(using(t))
                 case _:
-                    return ok(default())(ErrVal)
+                    return ok(ErrVal)(default())
 
         return inner
 
@@ -368,7 +368,7 @@ def and_then_catch(using: Fn[Val, NewVal]):
                 case Ok(t):
                     try:
                         return cast(
-                            Res[NewVal, ErrVal | NewErrVal], ok(using(t))(ErrVal)
+                            Res[NewVal, ErrVal | NewErrVal], ok(ErrVal)(using(t))
                         )
                     except catch as f:
                         return cast(Res[NewVal, ErrVal | NewErrVal], err(NewVal)(f))
@@ -413,15 +413,15 @@ def and_res(
     return inner
 
 
-def or_res[T, F](new_res: Res[T, F]) -> Callable[[Res[T, ErrVal]], Res[T, F]]:
+def or_res(new_res: Res[Val, NewErrVal]) -> Callable[[Res[Val, ErrVal]], Res[Val, NewErrVal]]:
     """
     Returns the provided result if the current one is an `Err`
     """
 
-    def inner(old_res: Res[T, ErrVal]) -> Res[T, F]:
+    def inner(old_res: Res[Val, ErrVal]) -> Res[Val, NewErrVal]:
         match old_res:
             case Ok():
-                return cast(Res[T, F], old_res)
+                return cast(Res[Val, NewErrVal], old_res)
             case Err():
                 return new_res
 
@@ -462,7 +462,7 @@ def safe(*err_type: type[ErrVal]):
 
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[NewVal, ErrVal]:
             try:
-                return cast(Res[NewVal, ErrVal],ok(using(*args, **kwargs))(ErrVal))
+                return cast(Res[NewVal, ErrVal],ok(ErrVal)(using(*args, **kwargs)))
             except err_type as e:
                 return cast(Res[NewVal, ErrVal], err(NewVal)(e))
             
@@ -505,15 +505,15 @@ def combine_errors(to: NewErrVal, inherit_message: bool = False):
     the references to the original captured errors. Useful for when a function could throw a lot of errors and you
     need to convert them into one error instead.
     #### Example
+    ```python
     @combine_errors(CustomError)
     @safe(TypeError, ValueError)
     def do_thing(s: str) -> str:
         if not isinstance(s, str):
             raise TypeError('Must be str')
         return s
-    
     done: Res[str, CustomError] = do_thing('ok')
-    
+    ``` 
     '''
     
     def inner(using: Callable[P, Ok[Val] | Err[ErrVal]]):

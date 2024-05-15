@@ -1,17 +1,14 @@
 from __future__ import annotations
-from typing import Callable, Protocol, Tuple, overload, TypeVar, Generic
+from typing import Callable, Tuple, overload, TypeVar, Generic, NamedTuple
 from pythonix.internals import trail
+from pythonix.internals.grammar import PipeApply
 from pythonix.internals.trail import Trail, Log
 
 Val = TypeVar("Val")
+Val2 = TypeVar("Val2")
 NewVal = TypeVar("NewVal")
 
-
-class HasInner(Generic[Val], Protocol):
-    inner: Val
-
-
-class Bind(Generic[Val]):
+class Bind(Generic[Val], NamedTuple):
     """
     Container that allows sequential functions calls to change its inner value and type.
     Transformations can be done with with either the `run` or `__call__` methods.
@@ -31,9 +28,6 @@ class Bind(Generic[Val]):
     """
 
     inner: Val
-
-    def __init__(self, inner: Val) -> None:
-        self.inner = inner
 
     @property
     def do(self) -> Do[Val]:
@@ -56,10 +50,10 @@ class Bind(Generic[Val]):
         Returns a new `Bind` object containing the new value. Works only with single arity
         functions.
         """
-        return Bind(using(self.inner))
+        return self.run(using)
+    
 
-
-class Do(Generic[Val]):
+class Do(Generic[Val], NamedTuple):
     """
     Container used to run arbitrary functions on an `inner` value without changing its
     state. Useful for logging, printing, or other inconsequential side effects.
@@ -80,9 +74,6 @@ class Do(Generic[Val]):
     """
 
     inner: Val
-
-    def __init__(self, inner: Val) -> None:
-        self.inner = inner
 
     def run(self, using: Callable[[Val], NewVal]) -> Do[Val]:
         """

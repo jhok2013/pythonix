@@ -6,7 +6,7 @@ from pythonix.internals.res import safe, safe
 
 class TestOk(TestCase):
     def setUp(self) -> None:
-        self.test_res = res.ok(5)(Exception)
+        self.test_res = res.ok(Exception)(5)
         return super().setUp()
 
     def test_is_funcs(self) -> None:
@@ -38,12 +38,12 @@ class TestOk(TestCase):
 
     def test_and_funcs(self) -> None:
         self.assertEqual(
-            res.and_then(lambda x: res.ok(x + 5)(Exception))(self.test_res).inner, 10
+            res.and_then(lambda x: res.ok(Exception)(x + 5))(self.test_res).inner, 10
         )
         self.assertEqual(
             res.and_then_catch(lambda x: x + 5)(Exception)(self.test_res).inner, 10
         )
-        self.assertEqual(res.and_res(res.ok(10)(Exception))(self.test_res).inner, 10)
+        self.assertEqual(res.and_res(res.ok(Exception)(10))(self.test_res).inner, 10)
 
     def test_or_funcs(self) -> None:
         self.assertEqual(res.or_else(lambda e: 10)(self.test_res).inner, 5)

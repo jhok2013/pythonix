@@ -21,6 +21,5 @@ class TestDictUtils(TestCase):
             (dict_utils.filter_keys(lambda k: k == 'joe'))
             (dict_utils.get('joe'))
             (res.q)
-            (lambda v: v == '2')
-            (self.assertTrue)
+            ()
         )

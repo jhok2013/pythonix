@@ -12,7 +12,7 @@ class Log(NamedTuple):
     message: str
 
     def __str__(self) -> str:
-        return f'{self.__class__.__name__}("{self.datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}", "{self.message}")'
+        return f'{type(self).__name__}("{self.datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}", "{self.message}")'
 
 
 class Info(Log):

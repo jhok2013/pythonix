@@ -10,13 +10,14 @@ from typing import (
     TypeVar,
     overload,
     MutableSequence,
+    Sequence,
     MutableMapping,
+    Mapping
 )
 from functools import reduce
 from copy import deepcopy
-from pythonix.internals.res import null_and_error_safe, safe, combine_errors
+from pythonix.internals.res import null_and_error_safe, safe
 from operator import setitem
-from pythonix.internals.curry import three
 
 
 Val = TypeVar("Val")
@@ -107,7 +108,19 @@ def item(index: SupportsIndex | Key):
     """
 
     @null_and_error_safe(IndexError, KeyError)
-    def inner(iterable: Iterable[Val]) -> Val:
+    @overload
+    def inner(mapping: Mapping[Key, Val]) -> Val: ...
+
+    @null_and_error_safe(IndexError)
+    @overload
+    def inner(sequence: Sequence[Val]) -> Val: ...
+
+    @null_and_error_safe(IndexError)
+    @overload
+    def inner(iterable: Iterable[Val]) -> Val: ...
+
+    @null_and_error_safe(IndexError, KeyError)
+    def inner(iterable: Mapping[Key, Val] | Sequence[Val] | Iterable[Val]) -> Val:
         return iterable[index]
 
     return inner
@@ -125,79 +138,50 @@ def arg(val: Val):
     return get_op
 
 
-class AssignError(Exception):
-    def __init__(self, message="An error occurred assigning a value"):
-        self.message = message
-
-
-@three
-@combine_errors(AssignError(), True)
-@safe(IndexError, TypeError)
-@overload
-def assign_item(
-    key: SupportsIndex | slice, val: NewVal, data: MutableSequence[Val]
-) -> MutableSequence[Val | NewVal]:
-    ...
-
-
-@three
-@combine_errors(AssignError(), True)
-@safe(KeyError, TypeError, IndexError)
-@overload
-def assign_item(
-    key: Key, val: NewVal, data: MutableMapping[Key, Val]
-) -> MutableMapping[Key, Val | NewVal]:
-    ...
-
-
-@three
-@combine_errors(AssignError(), True)
-@safe(KeyError, IndexError, TypeError)
-def assign_item(
-    key: SupportsIndex | slice | Key,
-    val: NewVal,
-    data: MutableSequence[Val] | MutableMapping[Key, Val],
-) -> MutableSequence[Val | NewVal] | MutableMapping[Key, Val | NewVal]:
-    """
-    Safely assigns a new value to a specific index for a mutable data structure, i.e a list or dictionary.
-    Will not panic during failure, rather it will return a `Res` with either the expected value or its Exception.
-    Returns a deepcopy of the original data, treating the mutable sequence like an immutable type.
-    #### Example
+def assign(key: Key | slice):
+    '''
+    Assign a value to a given index or name on any mutable sequence (i.e. `list`), mutable mapping (i.e. `dict`)
+    or any mutable object. Returns a copy of the updated object wrapped in a `Res` that reflects potential errors.
+    Has full type support for each of the three different types.
     ```python
-    x: list[str] = ['hello', 'world']
-    ass_res = assign_item(0)('hola')(data)
-    hola_x = res.unwrap(ass_res)
+    # Assign to a dictionary
+    start_d: dict[str, int] = {'foo': 1}
+    end_d: dict[str, int | str] = assign('bar')('hello')(start_d)
+    assert end_d['bar'] == 'hello'
 
-    assert x[0] == 'hello'
-    assert hola_x[0] == 'hola'
+    # Assign to a list
+    start_l: list[int] = [1, 2, 3]
+    end_l: list[int | str] = assign(0)('first')(start_l) 
+    assert end_l[0] == 'first'
+
+    # Assign to an object
+    start_obj: object = object.__new__(object)
+    end_obj: object = assign('foo')('bar')(start_obj)
+    assert end_obj == 'bar'
     ```
-    """
-    copy: MutableSequence[Val] | MutableMapping[Key, Val] = deepcopy(data)
-    setitem(copy, key, val)
-    return copy
+    '''
+    def get_val(val: NewVal):
 
+        @overload
+        @safe(IndexError)
+        def get_obj(sequence: MutableSequence[Val]) -> MutableSequence[Val | NewVal]: ...
 
-@three
-@safe(AttributeError)
-def assign_attr(key: str, val: NewVal, obj: ObjT) -> ObjT:
-    """
-    Safely assigns a new value to an attribute for an object. Will not panic upon failure, but instead
-    returns a `Res` indicating the expected value on success, or the expected `Exception` on failure.
-    Returns a deepcopy of the original object, treating the mutable object like an immutable type.
-    #### Example
-    ```python
-    class Foo(object):
-        def __init__(self, bar):
-            self.bar = bar
+        @overload
+        @safe(IndexError, KeyError)
+        def get_obj(mapping: MutableMapping[Key, Val]) -> MutableMapping[Key, Val | NewVal]: ...
+
+        @overload
+        @safe(AttributeError)
+        def get_obj(obj: Val) -> Val: ...
+
+        def get_obj(obj: MutableSequence[Val] | MutableMapping[Key, Val] | object):
+            copy = deepcopy(obj)
+            if not isinstance(obj, MutableMapping) and not isinstance(obj, MutableSequence):
+                setattr(copy, key, val)
+                return copy
+            setitem(copy, key, val)
+            return copy
+            
+        return get_obj
     
-    foo = Foo(0)
-    ass_res = assign_attr('baz')(1)(foo)
-    with_baz = res.unwrap(ass_res)
-
-    assert with_baz.baz == 1
-    assert hasattr(foo, 'baz') == False 
-    ```
-    """
-    copy: ObjT = deepcopy(obj)
-    setattr(copy, key, val)
-    return copy
+    return get_val
