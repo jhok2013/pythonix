@@ -1,11 +1,9 @@
 from __future__ import annotations
 from typing import Callable, Tuple, overload, TypeVar, Generic, NamedTuple
 from pythonix.internals import trail
-from pythonix.internals.grammar import PipeApply
 from pythonix.internals.trail import Trail, Log
 
 Val = TypeVar("Val")
-Val2 = TypeVar("Val2")
 NewVal = TypeVar("NewVal")
 
 class Bind(Generic[Val], NamedTuple):
@@ -21,10 +19,6 @@ class Bind(Generic[Val], NamedTuple):
     )
     assert y == True
     ```
-    #### Methods
-    - `run(Fn(T) -> U) -> Bind<U>`: Runs the provided function and returns a new `Bind` object containing
-    its result
-    - `__call__(Fn(T) -> U) -> Bind<U>`: Identical to the `run` function.
     """
 
     inner: Val
@@ -32,7 +26,9 @@ class Bind(Generic[Val], NamedTuple):
     @property
     def do(self) -> Do[Val]:
         """
-        Converts the `Bind` pipe to a `Do` pipe
+        Converts the `Bind` pipe to a `Do` pipe, which changes the call to run the function but not change the
+        inner value of the container. Call `bind` to revert back to a `Bind` container, whose call will
+        change the inner value.
         """
         return Do(self.inner)
 
@@ -68,9 +64,6 @@ class Do(Generic[Val], NamedTuple):
     )
     assert do.inner == 5
     ```
-    #### Methods
-    - `run(Fn(T) -> U) -> Do[T]`: Runs the provided function on the contained value and returns itself.
-    - `__call__(Fn(T) -> U) -> Do[T]`: Identical to the `run` function.
     """
 
     inner: Val
@@ -86,7 +79,8 @@ class Do(Generic[Val], NamedTuple):
     @property
     def bind(self) -> Bind[Val]:
         """
-        Converts the `Do` pipe to a `Bind` pipe
+        Converts the `Do` pipe to a `Bind` pipe, whose call will change the inner value of the container.
+        Call `do` afterwards to revert to a `Do` pipe.
         """
         return Bind(self.inner)
 

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar, Callable, Generic, overload
+from typing import TypeVar, Callable, Generic
 from pythonix.curry import two
 
 Val = TypeVar("Val")
@@ -118,4 +118,4 @@ class PipeApply(Generic[Val], object):
         return op(self.inner)
 
 
-p: PipeApply[None] = PipeApply(None)
+Pipe: PipeApply[None] = PipeApply(None)
