@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import wraps
 from typing import (
     TypeVar,
     Generic,
@@ -473,6 +474,7 @@ def safe(*err_type: type[ErrVal]):
     """
 
     def inner(using: Callable[P, NewVal]) -> Callable[P, Res[NewVal, ErrVal]]:
+        @wraps(using)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[NewVal, ErrVal]:
             try:
                 return cast(Res[NewVal, ErrVal], ok(ErrVal)(using(*args, **kwargs)))
@@ -489,6 +491,7 @@ def null_safe(using: Callable[P, NewVal | None]):
     Wraps the output of the function in a `Res[T, Nil]` object.
     """
 
+    @wraps(using)
     def inner(*args: P.args, **kwargs: P.kwargs) -> Res[NewVal, Nil]:
         return some(using(*args, **kwargs))
 
@@ -501,6 +504,7 @@ def null_and_error_safe(*err_types: type[ErrVal]):
     """
 
     def inner(using: Callable[P, Val]):
+        @wraps(using)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[Val, Nil]:
             try:
                 return some(using(*args, **kwargs))
@@ -528,8 +532,8 @@ def combine_errors(to: NewErrVal, inherit_message: bool = False):
     done: Res[str, CustomError] = do_thing('ok')
     ```
     """
-
     def inner(using: Callable[P, Ok[Val] | Err[ErrVal]]):
+        @wraps(using)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[Val, NewErrVal]:
             return map_err(lambda e: to.__class__(str(e)) if inherit_message else to)(
                 using(*args, **kwargs)

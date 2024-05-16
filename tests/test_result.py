@@ -1,6 +1,5 @@
 from unittest import TestCase
 from pythonix.prelude import *
-from pythonix.prelude import Fn
 from pythonix.internals.res import safe, safe
 
 

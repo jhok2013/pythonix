@@ -34,7 +34,7 @@ And the following utility functions
 - `qe`: Unwraps the err value of an `Err` or panics if `Ok`. Shorthand for `res.unwrap_err`
 """
 import pythonix.pipe as pipe
-import pythonix.res as pipe
+import pythonix.res as res
 import pythonix.trail as trail
 import pythonix.op as op
 import pythonix.req as req
@@ -43,9 +43,10 @@ import pythonix.tup as tup
 import pythonix.dict_utils as dict_utils
 import pythonix.grammar as grammar
 import pythonix.prove as prove
-from pythonix.grammar import Pipe
-from pythonix.grammar import Pipe as P
+from pythonix.grammar import P
 
 from pythonix.res import Ok, Err, Nil, q, Res, qe
 from pythonix.pipe import Bind, Do
 from pythonix.pipe import Bind as B, Do as D
+
+from pythonix.mdeq import pushleft

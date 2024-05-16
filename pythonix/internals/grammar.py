@@ -24,16 +24,16 @@ class PipeSuffix(Generic[Val, RetVal], object):
     ```
     """
 
-    _op: Callable[[Val], RetVal]
+    op: Callable[[Val], RetVal]
 
     def __init__(self, op: Callable[[Val], RetVal]) -> None:
-        self._op = op
+        self.op = op
 
     def __ror__(self, left: Val) -> RetVal:
-        return self._op(left)
+        return self.op(left)
 
     def __call__(self, left: Val) -> RetVal:
-        return self._op(left)
+        return self.op(left)
 
 
 class PipePrefix(Generic[Val, RetVal], object):
@@ -51,16 +51,16 @@ class PipePrefix(Generic[Val, RetVal], object):
     ```
     """
 
-    _op: Callable[[Val], RetVal]
+    op: Callable[[Val], RetVal]
 
     def __init__(self, op: Callable[[Val], RetVal]) -> None:
-        self._op = op
+        self.op = op
 
     def __or__(self, right: Val) -> RetVal:
-        return self._op(right)
+        return self.op(right)
 
     def __call__(self, right: Val) -> RetVal:
-        return self._op(right)
+        return self.op(right)
 
 
 class PipeInfix(Generic[Val, Val2, RetVal], object):
@@ -78,16 +78,16 @@ class PipeInfix(Generic[Val, Val2, RetVal], object):
     ```
     """
 
-    _op: Callable[[Val], Callable[[Val2], RetVal]]
+    op: Callable[[Val], Callable[[Val2], RetVal]]
 
     def __init__(self, op: Callable[[Val, Val2], RetVal]) -> None:
-        self._op = two(op)
+        self.op = two(op)
 
     def __ror__(self, left: Val) -> PipePrefix[Val2, RetVal]:
-        return PipePrefix(self._op(left))
+        return PipePrefix(self.op(left))
 
     def __call__(self, left: Val, right: Val2) -> RetVal:
-        return self._op(left)(right)
+        return self.op(left)(right)
 
 
 class PipeApply(Generic[Val], object):
@@ -121,4 +121,11 @@ class PipeApply(Generic[Val], object):
         return op(self.inner)
 
 
-Pipe: PipeApply[None] = PipeApply(None)
+P: PipeApply[None] = PipeApply(None)
+'''Special infix operator that pushes the value from the left into the right
+
+Example:
+    ```python
+    foo = 'foo' |P| bytes |P| str
+    ```
+'''

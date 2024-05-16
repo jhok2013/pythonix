@@ -54,6 +54,10 @@ def new(*vals: Val) -> MDeq[Val]:
 def push(element: Val, deq: MDeq[Val]) -> Ok[None]:
     """
     Pushes a new element `T` to the end of an `MDeq`.
+
+    Note:
+        This function is curried automatically. Apply function arguments
+        separated by brackets.
     """
     deq.inner.append(element)
     return Ok(None)

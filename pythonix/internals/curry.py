@@ -1,4 +1,5 @@
 from typing import TypeVar, Callable
+from functools import wraps, update_wrapper, WRAPPER_ASSIGNMENTS
 
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
@@ -11,20 +12,25 @@ T8 = TypeVar("T8")
 T9 = TypeVar("T9")
 U = TypeVar("U")
 
+assignments = list(WRAPPER_ASSIGNMENTS)
+assignments.remove('__annotations__')
+updated_assignments = WRAPPER_ASSIGNMENTS
+# updated_assignments = tuple(assignments)
 
 def two(func: Callable[[T1, T2], U]) -> Callable[[T1], Callable[[T2], U]]:
+    @wraps(func, assigned=updated_assignments)
     def in1(t1: T1) -> Callable[[T2], U]:
         def in2(t2: T2) -> U:
             return func(t1, t2)
 
         return in2
-
     return in1
 
 
 def three(
     func: Callable[[T1, T2, T3], U]
 ) -> Callable[[T1], Callable[[T2], Callable[[T3], U]]]:
+    @wraps(func, assigned=updated_assignments)
     def in1(t1: T1) -> Callable[[T2], Callable[[T3], U]]:
         def in2(t2: T2) -> Callable[[T3], U]:
             def in3(t3: T3) -> U:
@@ -40,6 +46,7 @@ def three(
 def four(
     func: Callable[[T1, T2, T3, T4], U]
 ) -> Callable[[T1], Callable[[T2], Callable[[T3], Callable[[T4], U]]]]:
+    @wraps(four)
     def in1(t1: T1) -> Callable[[T2], Callable[[T3], Callable[[T4], U]]]:
         def in2(t2: T2) -> Callable[[T3], Callable[[T4], U]]:
             def in3(t3: T3) -> Callable[[T4], U]:
@@ -58,6 +65,7 @@ def four(
 def five(
     func: Callable[[T1, T2, T3, T4, T5], U]
 ) -> Callable[[T1], Callable[[T2], Callable[[T3], Callable[[T4], Callable[[T5], U]]]]]:
+    @wraps(func, assigned=updated_assignments)
     def in1(
         t1: T1,
     ) -> Callable[[T2], Callable[[T3], Callable[[T4], Callable[[T5], U]]]]:
@@ -84,6 +92,7 @@ def six(
     [T1],
     Callable[[T2], Callable[[T3], Callable[[T4], Callable[[T5], Callable[[T6], U]]]]],
 ]:
+    @wraps(func, assigned=updated_assignments)
     def in1(
         t1: T1,
     ) -> Callable[
@@ -122,6 +131,7 @@ def seven(
         ],
     ],
 ]:
+    @wraps(func, assigned=updated_assignments)
     def in1(
         t1: T1,
     ) -> Callable[
@@ -173,6 +183,7 @@ def eight(
         ],
     ],
 ]:
+    @wraps(func, assigned=updated_assignments)
     def in1(
         t1: T1,
     ) -> Callable[
@@ -243,6 +254,7 @@ def nine(
         ],
     ],
 ]:
+    @wraps(func, assigned=updated_assignments)
     def in1(
         t1: T1,
     ) -> Callable[

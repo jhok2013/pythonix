@@ -39,5 +39,5 @@ from pythonix.internals.grammar import (
     PipeSuffix,
     PipeInfix,
     PipePrefix,
-    Pipe,
+    P,
 )
