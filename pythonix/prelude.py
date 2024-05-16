@@ -43,6 +43,7 @@ import pythonix.tup as tup
 import pythonix.dict_utils as dict_utils
 import pythonix.grammar as grammar
 import pythonix.prove as prove
+import pythonix.mdeq as mdeq
 from pythonix.grammar import P
 
 from pythonix.res import Ok, Err, Nil, q, Res, qe
