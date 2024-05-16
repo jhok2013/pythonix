@@ -1,3 +1,7 @@
+'''
+Utility functions that shore up some of the built in functionality
+for tuples with extensions, pushes, and inserts.
+'''
 from pythonix.internals.tup import (
     count_occurrences,
     extend,

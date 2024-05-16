@@ -24,6 +24,10 @@ And the following Pipe types
 - `Do` or `D`: Pipeable wrapper type for applying a series of functions on a value WITHOUT changing its value
 - `Pipe` or `P`: Infix wrapper for applying values on its right to the value on its right. Simulates a proper pipe operator
 
+And the following Function aliases
+- `Fn[T, U]`: Shorthand for `Callable[[T], U]`. Denotes a function that takes a single argument and returns an output
+- `FnOnce[U]`: Shorthand for `Callable[[], U]`, meaning a function that takes no input but provides a single output.
+
 ## Included Functions
 And the following utility functions
 - `q`: Unwraps the value of an `Ok` or panics if `Err`. Shorthand for `res.unwrap`

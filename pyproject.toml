@@ -6,7 +6,7 @@ authors = ["jhok2013 <jhok2013@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.9"
 requests = "^2.31.0"
 typing-extensions = "^4.11.0"
 
