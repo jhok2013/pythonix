@@ -1,4 +1,4 @@
-'''
+"""
 ## Submodules
 A mass import of all the pythonix submodules including
 - `pipe`: Wrapper types for piping and transforming sequentially
@@ -32,12 +32,11 @@ And the following Function aliases
 And the following utility functions
 - `q`: Unwraps the value of an `Ok` or panics if `Err`. Shorthand for `res.unwrap`
 - `qe`: Unwraps the err value of an `Err` or panics if `Ok`. Shorthand for `res.unwrap_err`
-'''
+"""
 import pythonix.pipe as pipe
-import pythonix.res as res
+import pythonix.res as pipe
 import pythonix.trail as trail
 import pythonix.op as op
-from pythonix.internals.types import Fn, FnOnce
 import pythonix.req as req
 import pythonix.curry as curry
 import pythonix.tup as tup

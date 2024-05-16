@@ -2,9 +2,9 @@
 Module for handling tuples without risk of panics
 """
 from typing import Tuple, TypeVar
-from pythonix.op import item
-from pythonix.res import safe, null_and_error_safe
-from pythonix.curry import two, three
+from pythonix.internals.op import item
+from pythonix.internals.res import safe, null_and_error_safe
+from pythonix.internals.curry import two, three
 from enum import Enum
 
 Val = TypeVar("Val")

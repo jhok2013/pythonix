@@ -1,4 +1,4 @@
-'''
+"""
 Decorator classes that used to simulate prefix, infix, and suffix applications. Includes
 the special `p` object to pipe values from left to right into functions.
 #### Example
@@ -33,5 +33,11 @@ add: Fn[Tuple[int, int], int] = lambda elems: sum(elems)
 assert (5, 5) |p| sum == 10
 assert p((5, 5))(sum) == 10
 ```
-'''
-from pythonix.internals.grammar import PipeApply, PipeSuffix, PipeInfix, PipePrefix, Pipe
+"""
+from pythonix.internals.grammar import (
+    PipeApply,
+    PipeSuffix,
+    PipeInfix,
+    PipePrefix,
+    Pipe,
+)

@@ -1,7 +1,14 @@
 from __future__ import annotations
-from collections.abc import Iterator
-from typing import TypeVar, Generic, NamedTuple, cast, ParamSpec, Callable, TypeAlias
-from pythonix.internals.types import Fn
+from typing import (
+    TypeVar,
+    Generic,
+    NamedTuple,
+    cast,
+    ParamSpec,
+    Callable,
+    TypeAlias,
+    Iterator,
+)
 
 P = ParamSpec("P")
 
@@ -40,7 +47,7 @@ class Ok(Generic[Val], NamedTuple):
 
     def __iter__(self) -> Iterator[Val | None]:
         return iter((self.inner, None))
-    
+
 
 class Err(Generic[ErrVal], NamedTuple):
     """
@@ -135,7 +142,7 @@ def is_err(res: Res[Val, ErrVal]) -> bool:
             return True
 
 
-def is_ok_and(predicate: Fn[Val, bool]) -> Callable[[Res[Val, ErrVal]], bool]:
+def is_ok_and(predicate: Callable[[Val], bool]) -> Callable[[Res[Val, ErrVal]], bool]:
     """
     Return `True` if the `Res` is `Ok` and the `predicate` evaluates to `True`.
     """
@@ -150,7 +157,9 @@ def is_ok_and(predicate: Fn[Val, bool]) -> Callable[[Res[Val, ErrVal]], bool]:
     return inner
 
 
-def is_err_and(predicate: Fn[ErrVal, bool]) -> Callable[[Res[Val, ErrVal]], bool]:
+def is_err_and(
+    predicate: Callable[[ErrVal], bool]
+) -> Callable[[Res[Val, ErrVal]], bool]:
     """
     Return `True` if the `Res` is `Err` and the `predicate` evaluates to `True`
     """
@@ -176,7 +185,7 @@ def unwrap(result: Res[Val, ErrVal]) -> Val:
             raise e
 
 
-def unwrap_or(default: Val) -> Fn[Res[Val, ErrVal], Val]:
+def unwrap_or(default: Val) -> Callable[[Res[Val, ErrVal]], Val]:
     """
     Return the `Ok` value if `Ok`, else return the default
     """
@@ -191,7 +200,7 @@ def unwrap_or(default: Val) -> Fn[Res[Val, ErrVal], Val]:
     return inner
 
 
-def unwrap_or_else(on_err: Callable[[], Val]) -> Fn[Res[Val, ErrVal], Val]:
+def unwrap_or_else(on_err: Callable[[], Val]) -> Callable[[Res[Val, ErrVal]], Val]:
     """
     Return the `Ok` value if `Ok`, else run the `on_err` function that returns the same type.
     """
@@ -217,7 +226,9 @@ def unwrap_err(result: Res[Val, ErrVal]) -> ErrVal:
             return e
 
 
-def map(using: Fn[Val, NewVal]) -> Fn[Res[Val, ErrVal], Res[NewVal, ErrVal]]:
+def map(
+    using: Callable[[Val], NewVal]
+) -> Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]:
     """
     Run the function on the `Ok` if `Ok`, else return the current `Err`
     """
@@ -233,7 +244,7 @@ def map(using: Fn[Val, NewVal]) -> Fn[Res[Val, ErrVal], Res[NewVal, ErrVal]]:
 
 
 def map_or(
-    using: Fn[Val, NewVal]
+    using: Callable[[Val], NewVal]
 ) -> Callable[[NewVal], Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]]:
     """
     Runs the function on the `Ok` or return the `default` if `Err`
@@ -255,7 +266,7 @@ def map_or(
 
 
 def map_err(
-    using: Fn[ErrVal, NewErrVal]
+    using: Callable[[ErrVal], NewErrVal]
 ) -> Callable[[Res[Val, ErrVal]], Res[Val, NewErrVal]]:
     """
     Runs the function on the `ErrVal` if in `Err` or returns the current `Ok`
@@ -297,7 +308,7 @@ def map_catch(
 
 
 def map_or_else(
-    using: Fn[Val, NewVal]
+    using: Callable[[Val], NewVal]
 ) -> Callable[
     [Callable[[], NewVal]], Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]
 ]:
@@ -321,8 +332,8 @@ def map_or_else(
 
 
 def and_then(
-    using: Fn[Val, Res[NewVal, ErrVal]]
-) -> Fn[Res[Val, ErrVal], Res[NewVal, ErrVal]]:
+    using: Callable[[Val], Res[NewVal, ErrVal]]
+) -> Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal]]:
     """
     Runs the function that returns a new `Res` if `Ok`, else return the current `Err`
     """
@@ -338,8 +349,8 @@ def and_then(
 
 
 def or_else(
-    using: Fn[ErrVal, Res[NewVal, NewErrVal]]
-) -> Fn[Res[Val, ErrVal], Res[Val, NewErrVal]]:
+    using: Callable[[ErrVal], Res[NewVal, NewErrVal]]
+) -> Callable[[Res[Val, ErrVal]], Res[Val, NewErrVal]]:
     """
     Runs the function that returns a new `Res` if in `Err`, else it will return the current `Ok`
     """
@@ -354,7 +365,7 @@ def or_else(
     return inner
 
 
-def and_then_catch(using: Fn[Val, NewVal]):
+def and_then_catch(using: Callable[[Val], NewVal]):
     """
     Runs the function that could fail, catching the specified error and returning a new `Res`.
     Will only be ran if `Ok`, else it will return its current `Err`
@@ -362,7 +373,7 @@ def and_then_catch(using: Fn[Val, NewVal]):
 
     def get_catch(
         catch: type[NewErrVal],
-    ) -> Fn[Res[Val, ErrVal], Res[NewVal, ErrVal | NewErrVal]]:
+    ) -> Callable[[Res[Val, ErrVal]], Res[NewVal, ErrVal | NewErrVal]]:
         def inner(res: Res[Val, ErrVal]) -> Res[NewVal, ErrVal | NewErrVal]:
             match res:
                 case Ok(t):
@@ -380,7 +391,7 @@ def and_then_catch(using: Fn[Val, NewVal]):
     return get_catch
 
 
-def map_err(using: Fn[ErrVal, NewErrVal]):
+def map_err(using: Callable[[ErrVal], NewErrVal]):
     """
     Changes the internal `Err` using the function if in an `Err` state. Otherwise it returns
     the `Ok`
@@ -413,7 +424,9 @@ def and_res(
     return inner
 
 
-def or_res(new_res: Res[Val, NewErrVal]) -> Callable[[Res[Val, ErrVal]], Res[Val, NewErrVal]]:
+def or_res(
+    new_res: Res[Val, NewErrVal]
+) -> Callable[[Res[Val, ErrVal]], Res[Val, NewErrVal]]:
     """
     Returns the provided result if the current one is an `Err`
     """
@@ -450,7 +463,7 @@ def safe(*err_type: type[ErrVal]):
     @safe(ValueError, TypeError)
     def func_1():
         return 'success'
-    
+
     def func_2():
         try:
             return ok('success')(ValueError | TypeError)
@@ -458,16 +471,16 @@ def safe(*err_type: type[ErrVal]):
             return err(str)(e)
     ```
     """
-    def inner(using: Callable[P, NewVal]) -> Callable[P, Res[NewVal, ErrVal]]:
 
+    def inner(using: Callable[P, NewVal]) -> Callable[P, Res[NewVal, ErrVal]]:
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[NewVal, ErrVal]:
             try:
-                return cast(Res[NewVal, ErrVal],ok(ErrVal)(using(*args, **kwargs)))
+                return cast(Res[NewVal, ErrVal], ok(ErrVal)(using(*args, **kwargs)))
             except err_type as e:
                 return cast(Res[NewVal, ErrVal], err(NewVal)(e))
-            
+
         return wrapper
-    
+
     return inner
 
 
@@ -500,7 +513,7 @@ def null_and_error_safe(*err_types: type[ErrVal]):
 
 
 def combine_errors(to: NewErrVal, inherit_message: bool = False):
-    '''
+    """
     Decorator function used to convert function that return a `Res[Val, ErrVal]` to `Res[Val, NewErrVal]`, consuming
     the references to the original captured errors. Useful for when a function could throw a lot of errors and you
     need to convert them into one error instead.
@@ -513,15 +526,15 @@ def combine_errors(to: NewErrVal, inherit_message: bool = False):
             raise TypeError('Must be str')
         return s
     done: Res[str, CustomError] = do_thing('ok')
-    ``` 
-    '''
-    
-    def inner(using: Callable[P, Ok[Val] | Err[ErrVal]]):
+    ```
+    """
 
+    def inner(using: Callable[P, Ok[Val] | Err[ErrVal]]):
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[Val, NewErrVal]:
-            
-            return map_err(lambda e: to.__class__(str(e)) if inherit_message else to)(using(*args, **kwargs)) 
-        
+            return map_err(lambda e: to.__class__(str(e)) if inherit_message else to)(
+                using(*args, **kwargs)
+            )
+
         return wrapper
 
     return inner

@@ -2,9 +2,8 @@
 Module for handling key value pairs.
 """
 
-from typing import NamedTuple, Tuple, TypeVar, Generic, TypeAlias
-from pythonix.internals.types import Fn
-from pythonix.internals.curry import two
+from typing import NamedTuple, Tuple, TypeVar, Generic, TypeAlias, Callable
+from pythonix.curry import two
 
 
 Val = TypeVar("Val")
@@ -63,7 +62,7 @@ def get_key(pair: Pair[Val]) -> KeyStr:
 
 
 @two
-def map(using: Fn[Val, NewVal], pair: Pair[Val]) -> Pair[NewVal]:
+def map(using: Callable[[Val], NewVal], pair: Pair[Val]) -> Pair[NewVal]:
     """
     Change the inner value of a `Pair` with a function
     """

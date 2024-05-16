@@ -1,8 +1,8 @@
 from typing import NamedTuple, ParamSpec, Callable, Tuple, TypeVar
-from pythonix.op import mapx
-from pythonix.pipe import Bind
-from pythonix.res import Res
-import pythonix.pair as pair
+from pythonix.internals.op import mapx
+from pythonix.internals.pipe import Bind
+from pythonix.internals.res import Res, safe, map as rmap
+from pythonix.internals.pair import Pair, Pairs, map
 from functools import singledispatch
 from requests import (
     get as _get,
@@ -12,9 +12,6 @@ from requests import (
     Response as OGResponse,
     HTTPError,
 )
-from pythonix.internals.pair import Pair, Pairs
-from pythonix.internals.pipe import Bind
-from pythonix import res
 
 P = ParamSpec("P")
 
@@ -36,7 +33,7 @@ def parse_response(response: OGResponse) -> Response:
     return Response(response.url, response.content, response.status_code)
 
 
-@res.safe(HTTPError)
+@safe(HTTPError)
 def check_status(response: OGResponse) -> OGResponse:
     """
     Captures an `HTTPError` from a `requests` HTTP response in `Result`
@@ -90,7 +87,9 @@ class Delete(Request):
 
     method: Callable[P, Response] = _delete
 
-R = TypeVar('R', bound='Request')
+
+R = TypeVar("R", bound="Request")
+
 
 @singledispatch
 def to_bytes(value: int) -> bytes:
@@ -103,7 +102,7 @@ def _(value: str) -> bytes:
 
 
 def set_value_to_bytes(keyvalue: Pair[str | int]) -> Pair[bytes]:
-    Bind(keyvalue)(pair.map(to_bytes)).inner
+    Bind(keyvalue)(map(to_bytes)).inner
 
 
 def get(url: str):
@@ -297,6 +296,4 @@ def send(request: RequestType) -> Res[Response, HTTPError]:
     """
     return Bind(request)(body)(
         lambda body: {"url": request.url} | {k: v for k, v in body}
-    )(lambda kwargs: request.method(**kwargs))(check_status)(
-        res.map(parse_response)
-    ).inner
+    )(lambda kwargs: request.method(**kwargs))(check_status)(rmap(parse_response)).inner

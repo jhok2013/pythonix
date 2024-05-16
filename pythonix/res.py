@@ -1,4 +1,4 @@
-'''
+"""
 Functions and types for handling expected and unexpected outcomes, like Exceptions and errors.
 Works well with `Bind` and `Do` to capture, handle, and unwrap the results of operations as values.
 
@@ -191,8 +191,7 @@ def main():
             error(f'Unexpected value was found {_}')
             raise Exception('An unidentified value was returned')
 ```
-
-'''
+"""
 from pythonix.internals.res import (
     and_res,
     and_then,
@@ -225,5 +224,5 @@ from pythonix.internals.res import (
     Err,
     null_and_error_safe,
     q,
-    qe
+    qe,
 )

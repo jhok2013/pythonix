@@ -5,10 +5,9 @@ Functions used to create and perform operations safely on a singly typed mutable
 
 """
 from collections import deque
-from __future__ import annotations
 from typing import Iterable, Generic, TypeVar
-from pythonix.res import null_and_error_safe, safe, Ok
-from pythonix.curry import two, three
+from pythonix.internals.res import null_and_error_safe, safe, Ok
+from pythonix.internals.curry import two, three
 
 Val = TypeVar("Val")
 NewVal = TypeVar("NewVal")

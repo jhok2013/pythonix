@@ -12,7 +12,7 @@ from typing import (
     MutableSequence,
     Sequence,
     MutableMapping,
-    Mapping
+    Mapping,
 )
 from functools import reduce
 from copy import deepcopy
@@ -109,15 +109,18 @@ def item(index: SupportsIndex | Key):
 
     @null_and_error_safe(IndexError, KeyError)
     @overload
-    def inner(mapping: Mapping[Key, Val]) -> Val: ...
+    def inner(mapping: Mapping[Key, Val]) -> Val:
+        ...
 
     @null_and_error_safe(IndexError)
     @overload
-    def inner(sequence: Sequence[Val]) -> Val: ...
+    def inner(sequence: Sequence[Val]) -> Val:
+        ...
 
     @null_and_error_safe(IndexError)
     @overload
-    def inner(iterable: Iterable[Val]) -> Val: ...
+    def inner(iterable: Iterable[Val]) -> Val:
+        ...
 
     @null_and_error_safe(IndexError, KeyError)
     def inner(iterable: Mapping[Key, Val] | Sequence[Val] | Iterable[Val]) -> Val:
@@ -139,7 +142,7 @@ def arg(val: Val):
 
 
 def assign(key: Key):
-    '''
+    """
     Assign a value to a given index or name on any mutable sequence (i.e. `list`), mutable mapping (i.e. `dict`)
     or any mutable object. Returns a copy of the updated object wrapped in a `Res` that reflects potential errors.
     Has full type support for each of the three different types.
@@ -151,7 +154,7 @@ def assign(key: Key):
 
     # Assign to a list
     start_l: list[int] = [1, 2, 3]
-    end_l: list[int | str] = assign(0)('first')(start_l) 
+    end_l: list[int | str] = assign(0)('first')(start_l)
     assert end_l[0] == 'first'
 
     # Assign to an object
@@ -159,27 +162,38 @@ def assign(key: Key):
     end_obj: object = assign('foo')('bar')(start_obj)
     assert end_obj == 'bar'
     ```
-    '''
+    """
+
     def get_val(val: NewVal):
+        @overload
+        def get_obj(
+            sequence: MutableSequence[Val],
+        ) -> Res[MutableSequence[Val | NewVal], IndexError]:
+            ...
 
         @overload
-        def get_obj(sequence: MutableSequence[Val]) -> Res[MutableSequence[Val | NewVal], IndexError]: ...
+        def get_obj(
+            mapping: MutableMapping[Key, Val]
+        ) -> Res[MutableMapping[Key, Val | NewVal], IndexError | KeyError]:
+            ...
 
         @overload
-        def get_obj(mapping: MutableMapping[Key, Val]) -> Res[MutableMapping[Key, Val | NewVal], IndexError | KeyError]: ...
-
-        @overload
-        def get_obj(obj: ObjT) -> Res[ObjT, AttributeError]: ...
+        def get_obj(obj: ObjT) -> Res[ObjT, AttributeError]:
+            ...
 
         @safe(IndexError, KeyError, AttributeError)
-        def get_obj(obj: MutableSequence[Val] | MutableMapping[Key, Val] | ObjT) -> MutableSequence[Val | NewVal] | MutableMapping[Key, Val | NewVal] | ObjT:
+        def get_obj(
+            obj: MutableSequence[Val] | MutableMapping[Key, Val] | ObjT
+        ) -> MutableSequence[Val | NewVal] | MutableMapping[Key, Val | NewVal] | ObjT:
             copy = deepcopy(obj)
-            if not isinstance(obj, MutableMapping) and not isinstance(obj, MutableSequence):
+            if not isinstance(obj, MutableMapping) and not isinstance(
+                obj, MutableSequence
+            ):
                 setattr(copy, key, val)
                 return copy
             setitem(copy, key, val)
             return copy
-            
+
         return get_obj
-    
+
     return get_val

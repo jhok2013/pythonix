@@ -1,4 +1,4 @@
-'''
+"""
 Decorator functions used to curry functions and provide new type annotations.
 The number of arguments in the function must match the decorator.
 #### Example
@@ -13,5 +13,5 @@ def add(x: int) -> Fn[int, int]:
         return x + y
     return inner
 ```
-'''
+"""
 from pythonix.internals.curry import two, three, four, five, six, seven, eight, nine

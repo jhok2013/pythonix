@@ -1,4 +1,5 @@
-from typing import NamedTuple, Tuple, Callable, ParamSpec, TypeVar, Generic
+from __future__ import annotations
+from typing import NamedTuple, Tuple, Callable, ParamSpec, TypeVar, Generic, overload
 from datetime import datetime, timezone
 
 P = ParamSpec("P")
@@ -111,3 +112,43 @@ def trail(*logs: LogType):
         return wrapper
 
     return inner
+
+
+class Blaze(Generic[Val]):
+    """
+    `Bind` container used to accumulate log messages during runtime without
+    side effects to the functions being ran. Runs functions with an optional
+    log message attached. If the function being called returns a `Trail` log container,
+    then it will attach its logs to the currently accumulated logs.
+    """
+
+    logs: Tuple[Log, ...] = tuple()
+    inner: trail.Trail[Val]
+
+    def __init__(self, inner: Val | Trail[Val], *logs: Log):
+        match inner:
+            case Trail():
+                self.inner = inner
+                self.logs = logs + inner.logs
+            case _:
+                self.inner = trail.new()(inner)
+                self.logs = logs
+
+    @overload
+    def __call__(
+        self, using: Callable[[Val], trail.Trail[NewVal]], *logs: Log
+    ) -> Blaze[NewVal]:
+        ...
+
+    @overload
+    def __call__(self, using: Callable[[Val], NewVal], *logs: Log) -> Blaze[NewVal]:
+        ...
+
+    def __call__(
+        self, using: Callable[[Val], trail.Trail[NewVal] | NewVal], *logs: Log
+    ) -> Blaze[NewVal]:
+        """
+        Call the function and attach the logs from the function `Trail` and the optional logs
+        to the new instance of `Blaze` containing the result.
+        """
+        return Blaze(using(self.inner.inner), *(self.logs + logs))
