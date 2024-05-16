@@ -1,5 +1,5 @@
 from typing import TypeVar, Callable
-from functools import wraps, update_wrapper, WRAPPER_ASSIGNMENTS
+from functools import wraps, WRAPPER_ASSIGNMENTS
 
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
