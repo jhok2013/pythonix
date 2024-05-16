@@ -49,5 +49,3 @@ from pythonix.grammar import P
 from pythonix.res import Ok, Err, Nil, q, Res, qe
 from pythonix.pipe import Bind, Do
 from pythonix.pipe import Bind as B, Do as D
-
-from pythonix.mdeq import pushleft
