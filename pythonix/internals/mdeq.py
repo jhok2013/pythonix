@@ -1,8 +1,5 @@
 """
-### MDeq
-
 Functions used to create and perform operations safely on a singly typed mutable linked list.
-
 """
 from collections import deque
 from typing import Iterable, Generic, TypeVar
