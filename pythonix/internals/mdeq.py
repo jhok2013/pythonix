@@ -6,11 +6,11 @@ from typing import Iterable, Generic, TypeVar
 from pythonix.internals.res import null_and_error_safe, safe, Ok
 from pythonix.internals.curry import two, three
 
-Val = TypeVar("Val")
-NewVal = TypeVar("NewVal")
+T = TypeVar("T")
+U = TypeVar("U")
 
 
-class MDeq(Generic[Val], object):
+class MDeq(Generic[T], object):
     """
     `MDeq` is a singly-typed mutable linked list. `push` and `pop` operations are thread safe and run in
     `O(1)` time. Insert and get operations run in `O(n)` time. As a mutable data structure there are some
@@ -33,13 +33,13 @@ class MDeq(Generic[Val], object):
     ```
     """
 
-    inner: deque[Val] = deque()
+    inner: deque[T] = deque()
 
-    def __init__(self, *args: Val):
+    def __init__(self, *args: T):
         self.inner = deque(args)
 
 
-def new(*vals: Val) -> MDeq[Val]:
+def new(*vals: T) -> MDeq[T]:
     """
     Creates a new instance of `MDeq` with the `vals` passed in.
     Make sure all the types are the same or you'll have weird type hints.
@@ -48,7 +48,7 @@ def new(*vals: Val) -> MDeq[Val]:
 
 
 @two
-def push(element: Val, deq: MDeq[Val]) -> Ok[None]:
+def push(element: T, deq: MDeq[T]) -> Ok[None]:
     """
     Pushes a new element `T` to the end of an `MDeq`.
 
@@ -61,7 +61,7 @@ def push(element: Val, deq: MDeq[Val]) -> Ok[None]:
 
 
 @two
-def pushleft(element: Val, deq: MDeq[Val]) -> Ok[None]:
+def pushleft(element: T, deq: MDeq[T]) -> Ok[None]:
     """
     Pushes a new element `T` to be the new first element in an `MDeq`
     """
@@ -70,7 +70,7 @@ def pushleft(element: Val, deq: MDeq[Val]) -> Ok[None]:
 
 
 @three
-def insert(element: Val, index: int, deq: MDeq[Val]) -> Ok[None]:
+def insert(element: T, index: int, deq: MDeq[T]) -> Ok[None]:
     """
     Inserts a new element at the provided index. Runs on `O(n)` time.
 
@@ -80,7 +80,7 @@ def insert(element: Val, index: int, deq: MDeq[Val]) -> Ok[None]:
     return Ok(None)
 
 
-def copy(deq: MDeq[Val]) -> MDeq[Val]:
+def copy(deq: MDeq[T]) -> MDeq[T]:
     """
     Returns a shallow copy of the `MDeq` as a new object.
     """
@@ -88,7 +88,7 @@ def copy(deq: MDeq[Val]) -> MDeq[Val]:
 
 
 @null_and_error_safe(IndexError)
-def pop(deq: MDeq[Val]) -> Val:
+def pop(deq: MDeq[T]) -> T:
     """
     Removes and returns the last element in an `MDeq` if it exists.
     """
@@ -96,7 +96,7 @@ def pop(deq: MDeq[Val]) -> Val:
 
 
 @null_and_error_safe(IndexError)
-def popleft(deq: MDeq[Val]) -> Val:
+def popleft(deq: MDeq[T]) -> T:
     """
     Removes and returns the first element in an `MDeq` if it exists.
     """
@@ -104,7 +104,7 @@ def popleft(deq: MDeq[Val]) -> Val:
 
 
 @null_and_error_safe(IndexError)
-def first(deq: MDeq[Val]) -> Val:
+def first(deq: MDeq[T]) -> T:
     """
     Returns the first element in an `MDeq` if it exists.
     """
@@ -112,7 +112,7 @@ def first(deq: MDeq[Val]) -> Val:
 
 
 @null_and_error_safe(IndexError)
-def last(deq: MDeq[Val]) -> Val:
+def last(deq: MDeq[T]) -> T:
     """
     Returns the last element in an `MDeq` if it exists.
     """
@@ -121,7 +121,7 @@ def last(deq: MDeq[Val]) -> Val:
 
 @two
 @null_and_error_safe(IndexError)
-def at(index: int, deq: MDeq[Val]) -> Val:
+def at(index: int, deq: MDeq[T]) -> T:
     """
     Returns the element at the provided index in an `MDeq` if it exists.
     """
@@ -130,7 +130,7 @@ def at(index: int, deq: MDeq[Val]) -> Val:
 
 @two
 @safe(IndexError)
-def remove(index: int, deq: MDeq[Val]) -> None:
+def remove(index: int, deq: MDeq[T]) -> None:
     """
     Removes the element from the `MDeq` if it exists at the given index.
     """
@@ -138,7 +138,7 @@ def remove(index: int, deq: MDeq[Val]) -> None:
 
 
 @two
-def extend(src: Iterable[Val], tgt: MDeq[Val]) -> Ok[None]:
+def extend(src: Iterable[T], tgt: MDeq[T]) -> Ok[None]:
     """
     Combines an iterable with a provided `MDeq` with all new elements being appended.
     """
@@ -148,7 +148,7 @@ def extend(src: Iterable[Val], tgt: MDeq[Val]) -> Ok[None]:
 
 
 @two
-def extendleft(src: Iterable[Val], tgt: MDeq[Val]) -> Ok[None]:
+def extendleft(src: Iterable[T], tgt: MDeq[T]) -> Ok[None]:
     """
     Combines an iterable with a provided `MDeq` with all new elements going first.
     """
@@ -157,13 +157,13 @@ def extendleft(src: Iterable[Val], tgt: MDeq[Val]) -> Ok[None]:
     return Ok(None)
 
 
-def index(find: Val, start: int = 1):
+def index(find: T, start: int = 1):
     """
     Retrieves the index of the provide dvalue, if it exists.
     """
 
     @null_and_error_safe(ValueError)
-    def inner(deq: MDeq[Val]) -> int:
+    def inner(deq: MDeq[T]) -> int:
         return deq.inner.index(find, start)
 
     return inner

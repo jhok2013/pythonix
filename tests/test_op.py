@@ -58,7 +58,7 @@ class TestOp(TestCase):
     def test_reducex(self) -> None:
         (
             B(tuple(self.test_class._asdict().values()))
-            (op.reducex(add))
+            (op.fold(add))
             (int)
             (lambda x: self.assertEqual(x, 9))
         )

@@ -42,13 +42,13 @@ from __future__ import annotations
 from typing import TypeVar, Callable, Generic
 from pythonix.internals.curry import two
 
-Val = TypeVar("Val")
-Val2 = TypeVar("Val2")
-RetVal = TypeVar("RetVal")
-ErrVal = TypeVar("ErrVal", bound="Exception")
+S = TypeVar("S")
+T = TypeVar("T")
+U = TypeVar("U")
+E = TypeVar("E", bound="Exception")
 
 
-class PipeSuffix(Generic[Val, RetVal], object):
+class PipeSuffix(Generic[T, U], object):
     """Class decorator used to create custom behavior that uses the `|` symbol.
 
     Wrap functions whose parameters you want to receive from the left of a `|` in the class.
@@ -66,19 +66,19 @@ class PipeSuffix(Generic[Val, RetVal], object):
         ```
     """
 
-    op: Callable[[Val], RetVal]
+    op: Callable[[T], U]
 
-    def __init__(self, op: Callable[[Val], RetVal]) -> None:
+    def __init__(self, op: Callable[[T], U]) -> None:
         self.op = op
 
-    def __ror__(self, left: Val) -> RetVal:
+    def __ror__(self, left: T) -> U:
         return self.op(left)
 
-    def __call__(self, left: Val) -> RetVal:
+    def __call__(self, left: T) -> U:
         return self.op(left)
 
 
-class PipePrefix(Generic[Val, RetVal], object):
+class PipePrefix(Generic[T, U], object):
     """
     Class decorator used to create custom behavior that uses the `|` symbol.
     Wrap functions whose parameters you want to receive from the right of a `|` in the class.
@@ -93,19 +93,19 @@ class PipePrefix(Generic[Val, RetVal], object):
     ```
     """
 
-    op: Callable[[Val], RetVal]
+    op: Callable[[T], U]
 
-    def __init__(self, op: Callable[[Val], RetVal]) -> None:
+    def __init__(self, op: Callable[[T], U]) -> None:
         self.op = op
 
-    def __or__(self, right: Val) -> RetVal:
+    def __or__(self, right: T) -> U:
         return self.op(right)
 
-    def __call__(self, right: Val) -> RetVal:
+    def __call__(self, right: T) -> U:
         return self.op(right)
 
 
-class PipeInfix(Generic[Val, Val2, RetVal], object):
+class PipeInfix(Generic[T, S, U], object):
     """
     Class decorator used to create custom behavior that uses the `|` symbol.
     Wrap functions whose parameters you want to receive from the left and right of a `|` in the class.
@@ -120,19 +120,19 @@ class PipeInfix(Generic[Val, Val2, RetVal], object):
     ```
     """
 
-    op: Callable[[Val], Callable[[Val2], RetVal]]
+    op: Callable[[T], Callable[[S], U]]
 
-    def __init__(self, op: Callable[[Val, Val2], RetVal]) -> None:
+    def __init__(self, op: Callable[[T, S], U]) -> None:
         self.op = two(op)
 
-    def __ror__(self, left: Val) -> PipePrefix[Val2, RetVal]:
+    def __ror__(self, left: T) -> PipePrefix[S, U]:
         return PipePrefix(self.op(left))
 
-    def __call__(self, left: Val, right: Val2) -> RetVal:
+    def __call__(self, left: T, right: S) -> U:
         return self.op(left)(right)
 
 
-class PipeApply(Generic[Val], object):
+class PipeApply(Generic[T], object):
     """
     Special infix operator that takes a value from the left and a function from the right. It calls
     the right function with the value from the left, which allows you to chain function calls together.
@@ -148,18 +148,18 @@ class PipeApply(Generic[Val], object):
     ```
     """
 
-    inner: Val
+    inner: T
 
-    def __init__(self, inner: Val) -> None:
+    def __init__(self, inner: T) -> None:
         self.inner = inner
 
-    def __ror__(self, inner: RetVal) -> PipeApply[RetVal]:
+    def __ror__(self, inner: U) -> PipeApply[U]:
         return PipeApply(inner)
 
-    def __or__(self, op: Callable[[Val], RetVal]) -> RetVal:
+    def __or__(self, op: Callable[[T], U]) -> U:
         return op(self.inner)
 
-    def __call__(self, op: Callable[[Val], RetVal]) -> RetVal:
+    def __call__(self, op: Callable[[T], U]) -> U:
         return op(self.inner)
 
 
