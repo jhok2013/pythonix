@@ -154,7 +154,7 @@ def mapx(using: Callable[[T], U]) -> Callable[[Iterable[T]], Iterator[U]]:
 
 def fold(
     using: Callable[[T, S], U]
-) -> Callable[[Iterable[T | S]], Iterator[U]]:
+) -> Callable[[Iterable[T | S]], U]:
     """Apply a function to accumulated pairs of elements in an iterable to a single final value
     
     Args:
