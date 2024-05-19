@@ -1,42 +1,61 @@
-"""Decorator classes that used to simulate prefix, infix, and suffix applications.
+"""Tools simulating prefix, infix, and suffix applications.
 
-Includes the special `P` object to pipe values from left to right into functions.
+Includes decorator classes for creating new grammar functions, a ``P`` instance
+for performing arbitrary piping of values on the left to functions on the right,
+and the ``Piper`` class for chaining function binds, applies, and dos on
+values sequentially using >>, |, and >.
 
-Example:
-    Prefix:
-    ```python
-    @PipePrefix
-    def absorb_right[T](val: T) -> T:
-        return val
+Examples:
 
-    assert absorb_right | 10 == 10
-    assert absorb_right(10) == 10
-    ```
+    Piper: ::
 
-    Infix:
-    ```python
-    @PipeInfix
-    def fold[T, U, V](func: Callable[[T, U], V], iterable: Iterable[T | U]) -> V:
-        return reduce(func, iterable)
+        >>> with_operators: str = Piper(5) >> (lambda x: x + 10) | print > str
+        15
+        >>> with_methods: str = Piper(5).bind(lambda x: x + 10).do(print).apply(str)
+        15
 
-    assert operator.add | fold | [1, 2, 3, 4] == 10
-    assert fold(operator.add)([1, 2, 3, 4]) == 10
-    ```
+    Pipe (P): ::
 
-    Suffix:
-    ```python
-    @PipeSuffix
-    def inner[T](val: HasInner[T]) -> T:
-        return val.inner
+        >>> sum([5, 5]) == 10
+        True
+        >>> [5, 5] |P| sum == 10
+        True
 
-    assert Ok(5) | inner == 5
-    assert inner(Ok(5)) == 5
-    ```
+    Prefix: ::
 
-    Pipe:
-    ```python
-    assert (5, 5) |p| sum == 10
-    ```
+        >>> @PipePrefix
+        ... def add_ten(x: int) -> int:
+        ...     return x + 10
+        ...
+        >>> add_ten(10)
+        20
+        >>> add_ten | 10
+        20
+
+    Infix: ::
+
+        >>> from functools import reduce
+        >>> @PipeInfix
+        ... def fold(func, iterable):
+        ...     return reduce(func, iterable)
+        ...
+        >>> add = lambda x, y: x + y
+        >>> add | fold | [1, 2, 3, 4]
+        10
+        >>> fold(add, [1, 2, 3, 4])
+        10
+
+    Suffix: ::
+
+        >>> @PipeSuffix
+        ... def add_ten(x: int) -> int:
+        ...     return x + 10
+        ...
+        >>> 10 | add_ten
+        20
+        >>> add_ten(10)
+        20
+
 """
 from pythonix.internals.grammar import (
     PipeSuffix,

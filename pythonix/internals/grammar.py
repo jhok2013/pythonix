@@ -9,59 +9,53 @@ Examples:
 
     Piper: ::
 
-        >>> with_operators: str = (
-        ...     Piper(5)               # Put value into Piper
-        ...     >> (lambda x: x + 10)  # Bind with a function
-        ...     | print                # Print without changing state
-        ...     > str                  # Return finally thru str
-        >>> )
-        >>> with_methods: str = (      # Do all the same steps with methods
-        ...     Piper(5)
-        ...     .bind(lambda x: x + 10)
-        ...     .do(print)
-        ...     .apply(str)
-        >>> )
-        >>> with_operators == with_methods
+        >>> with_operators: str = Piper(5) >> (lambda x: x + 10) | print > str
+        15
+        >>> with_methods: str = Piper(5).bind(lambda x: x + 10).do(print).apply(str)
+        15
+
+    Pipe (P): ::
+
+        >>> sum([5, 5]) == 10
+        True
+        >>> [5, 5] |P| sum == 10
         True
 
-    Pipe:
+    Prefix: ::
 
-        ```python
-        assert (5, 5) |p| sum == 10
-        ```
+        >>> @PipePrefix
+        ... def add_ten(x: int) -> int:
+        ...     return x + 10
+        ...
+        >>> add_ten(10)
+        20
+        >>> add_ten | 10
+        20
 
-    Prefix:
+    Infix: ::
 
-        ```python
-        @PipePrefix
-        def absorb_right[T](val: T) -> T:
-            return val
+        >>> from functools import reduce
+        >>> @PipeInfix
+        ... def fold(func, iterable):
+        ...     return reduce(func, iterable)
+        ...
+        >>> add = lambda x, y: x + y
+        >>> add | fold | [1, 2, 3, 4]
+        10
+        >>> fold(add, [1, 2, 3, 4])
+        10
 
-        assert absorb_right | 10 == 10
-        assert absorb_right(10) == 10
-        ```
+    Suffix: ::
 
-    Infix:
+        >>> @PipeSuffix
+        ... def add_ten(x: int) -> int:
+        ...     return x + 10
+        ...
+        >>> 10 | add_ten
+        20
+        >>> add_ten(10)
+        20
 
-        ```python
-        @PipeInfix
-        def fold[T, U, V](func: Callable[[T, U], V], iterable: Iterable[T | U]) -> V:
-            return reduce(func, iterable)
-
-        assert operator.add | fold | [1, 2, 3, 4] == 10
-        assert fold(operator.add)([1, 2, 3, 4]) == 10
-        ```
-
-    Suffix:
-
-        ```python
-        @PipeSuffix
-        def inner[T](val: HasInner[T]) -> T:
-            return val.inner
-
-        assert Ok(5) | inner == 5
-        assert inner(Ok(5)) == 5
-        ```
 """
 from __future__ import annotations
 from typing import TypeVar, Callable, Generic, Self
@@ -85,13 +79,13 @@ class PipeSuffix(Generic[T, U], object):
     Examples: ::
 
         >>> @PipeSuffix
-        >>> def add_one(x: int) -> int:
-        ...     return x + 1
+        ... def add_ten(x: int) -> int:
+        ...     return x + 10
         ...
-        >>> 1 | add_one == 2
-        True
-        >>> add_one(1) == 2
-        True
+        >>> 10 | add_ten
+        20
+        >>> add_ten(10)
+        20
 
     """
 
@@ -119,13 +113,13 @@ class PipePrefix(Generic[T, U], object):
     Example: ::
 
         >>> @PipePrefix
-        >>> def add_one(x):
-        ...     return x + 1
+        ... def add_ten(x: int) -> int:
+        ...     return x + 10
         ...
-        >>> add_one | 1 == 2
-        True
-        >>> add_one(1) == 2
-        True
+        >>> add_ten(10)
+        20
+        >>> add_ten | 10
+        20
 
     """
 
@@ -155,14 +149,16 @@ class PipeInfix(Generic[T, S, U], object):
 
     Examples: ::
 
+        >>> from functools import reduce
         >>> @PipeInfix
-        >>> def add(x: int, y: int) -> int:
-        ...    return x + y
+        ... def fold(func, iterable):
+        ...     return reduce(func, iterable)
         ...
-        >>> 1 | add | 1 == 2
-        True
-        >>> add(1, 1) == 2
-        True
+        >>> add = lambda x, y: x + y
+        >>> add | fold | [1, 2, 3, 4]
+        10
+        >>> fold(add, [1, 2, 3, 4])
+        10
 
     """
 
@@ -267,7 +263,8 @@ Examples: ::
 """
 
 
-def do(func: Callable[[S], U]) -> Callable[[T], T]:
+@two
+def do(func: Callable[[S], U], val: T) -> T:
     """Run the ``func`` with the ``val``, but only return the ``val``
 
     This function is useful for performing side effects like logging,
@@ -285,22 +282,15 @@ def do(func: Callable[[S], U]) -> Callable[[T], T]:
 
         Using the ``P`` operator ::
 
-            >>> expected: str = '20'
             >>> actual: str = 10 |P| (lambda x: x + 10) |P| do(print) |P| str
-            >>> expected == actual
-            True
+            20
 
         Passing ``print`` to ``P`` would usually have the next value be ``None``.
         However, since we used ``do``, its original value was preserved.
 
     """
-
-    def inner(val: T) -> T:
-        """Returns the passed value while calling the previous steps *func*"""
-        func(val)
-        return val
-
-    return inner
+    func(val)
+    return val
 
 
 def inner(val: T) -> T:
@@ -335,17 +325,13 @@ class Piper(Generic[T], object):
 
         With Operators: ::
 
-            >>> expected: str = '20'
             >>> actual: str = Piper(10) >> (lambda x: x + 10) >> do(print) > str
-            >>> expected == actual
-            True
+            20
 
         With Methods: ::
 
-            >>> expected: str = '20'
             >>> actual: str = Piper(10).bind(lambda x: x + 10).do(print).apply(str)
-            >>> expected == actual
-            True
+            20
 
     FAQ:
         Q: Whats the difference between ``bind`` `>>` and ``apply`` ``>``?

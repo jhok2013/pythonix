@@ -23,8 +23,11 @@ G = TypeVar("G", bound="Exception")
 
 
 class Nil(Exception):
-    """
-    Error class used to represent an unexpected `None` value.
+    """Error class used to represent an unexpected `None` value.
+
+    Using ``Ok[T] | Err[Nil]`` replaces using ``T | None`` to represent potential
+    null values.
+
     """
 
     def __init__(self, message: str = "Did not expect None"):
@@ -32,18 +35,24 @@ class Nil(Exception):
 
 
 class Ok(Generic[T], NamedTuple):
-    """
-    Represents a successful outcome of a function that could have failed.
-    Useful for pattern matching on a function that returns `Ok[T] | Err[E]`
-    ### Example
-    ```python
-    success: Res[int, ValueError] = ok(ValueError)(5)
-    match success:
-        case Ok(t):
-            assert t == 5
-        case Err(e):
-            raise e
-    ```
+    """Represents a successful outcome of a function that could have failed.
+
+    Useful for pattern matching on a function that returns `Ok[T] | Err[E]`.
+    Inner values can be unpacked like a tuple.
+
+    Note:
+        The preferred constructor is ``ok`` as it will preserve type information
+
+    Examples: ::
+
+        >>> match ok(ValueError)(5):
+        ...     case Ok(val):
+        ...         val
+        ...     case Err(e):
+        ...         raise e
+        ...
+        5
+
     """
 
     inner: T
@@ -53,18 +62,22 @@ class Ok(Generic[T], NamedTuple):
 
 
 class Err(Generic[E], NamedTuple):
-    """
-    Represents a successful outcome of a function that could have failed.
+    """Represents a successful outcome of a function that could have failed.
+
     Useful for pattern matching on a function that returns `Ok[T] | Err[E]`
-    ### Example
-    ```python
-    failure: Res[int, ValueError] = err(int)(ValueError("Failed to do a thing"))
-    match failure:
-        case Ok():
-            ...
-        case Err(e):
-            raise e
-    ```
+
+    Note:
+        The preferred constructor is ``err``, as it preserves type information
+
+    Example: ::
+
+        >>> match err(int)(ValueError("foo")):
+        ...     case Ok(val):
+        ...         val
+        ...     case Err(e):
+        ...         str(e)
+        'foo'
+
     """
 
     inner: E
@@ -74,33 +87,52 @@ class Err(Generic[E], NamedTuple):
 
 
 Res: TypeAlias = Ok[T] | Err[E]
+"""Type alias for ``Ok[T]`` or ``Err[E]``. Useful for quickly annotating
+
+Example: ::
+
+    >>> res: Res[int, ValueError] = ok(ValueError)(10)
+    
+"""
 
 
 def err(ok_type: type[T]) -> Callable[[E], Res[T, E]]:
-    """
-    Sets the `Ok` type of the `Res`
-    #### Example
-    ```python
-    failure: Res[int, ValueError] = err(int)(ValueError())
-    ```
+    """Creates an ``Err[E]`` while also providing type information for ``Ok[T]``
+
+    Use this rather than manually instantiating ``Ok`` or ``Err``.
+
+    Example: ::
+
+        >>> match err(int)(ValueError("foo")):
+        ...     case Ok(val):
+        ...         val
+        ...     case Err(e):
+        ...         str(e)
+        'foo'
+
     """
 
     def get_err(exception_object: E) -> Res[T, E]:
-        """
-        Sets the value of the `Err` inner value of the `Res`
-        """
         return Err(exception_object)
 
     return get_err
 
 
 def ok(err_type: type[E]) -> Callable[[T], Res[T, E]]:
-    """
-    Sets the `Ok` inner value of the `Res`
-    #### Example
-    ```python
-    success: Res[int, ValueError] = ok(5)(ValueError)
-    ```
+    """Creates an ``Ok[T]`` while also providing type information for ``Err[E]``
+
+    Use this rather than manually instantiating ``Ok`` or ``Err``.
+
+    Example: ::
+
+        >>> match ok(ValueError)(5):
+        ...     case Ok(val):
+        ...         val
+        ...     case Err(e):
+        ...         raise e
+        ...
+        5
+
     """
 
     def get_err(ok_obj: T) -> Res[T, E]:
@@ -112,11 +144,24 @@ def ok(err_type: type[E]) -> Callable[[T], Res[T, E]]:
     return get_err
 
 
-def some(inner: T | None) -> Ok[T] | Err[Nil]:
-    """
-    Converts the passed in value `T | None` to `Err[Nil]` if None,
-    else `Ok[T]`. Useful for checking for null values before they
-    cause unexpected defects.
+def some(inner: T | None) -> Res[T, Nil]:
+    """Converts a potentially None value to a result Res[T, Nil]
+
+    Use this to put potentially null values into the ``res`` ecosystem
+    for easy and pragmatic handling.
+
+    Examples: ::
+
+        >>> d = {"hello": "world"}
+        >>> some_val = some(d.get("hello"))
+        >>> match some_val:
+        ...     case Ok(val):
+        ...         val
+        ...     case Err(Nil()):
+        ...         ...
+        ...
+        'world'
+
     """
     if inner is not None:
         return ok(Nil)(inner)
@@ -124,8 +169,22 @@ def some(inner: T | None) -> Ok[T] | Err[Nil]:
 
 
 def is_ok(res: Res[T, E]) -> bool:
-    """
-    Return `True` if the `Res` is `Ok`.
+    """Return `True` if the `Res` is `Ok`, else ``False``
+
+    Another easy way to see if a result is ``Ok`` or ``Err``
+
+    Args:
+        *res* (Res[T, E]): Any result, ``Ok`` or ``Err``
+
+    Returns:
+        *output* (bool): True if ``Ok``, else ``False``
+
+    Examples: ::
+
+        >>> outcome: Res[int, ValueError] = ok(ValueError)(10)
+        >>> is_ok(outcome)
+        True
+
     """
     match res:
         case Ok():
@@ -135,8 +194,22 @@ def is_ok(res: Res[T, E]) -> bool:
 
 
 def is_err(res: Res[T, E]) -> bool:
-    """
-    Return `True` if the `Res` is `Err`.
+    """Return ``True`` if the ``Res`` is ``Err``, else ``True``
+
+    Another easy way to see if a result is ``Err`` or ``Ok``
+
+    Args:
+        *res* (Res[T, E]): Any result, ``Ok`` or ``Err``
+
+    Returns:
+        *output* (bool): ``True`` if ``Err``, else ``False``
+
+    Example: ::
+
+        >>> outcome: Res[int, ValueError] = err(int)(ValueError())
+        >>> is_err(outcome)
+        True
+
     """
     match res:
         case Ok():
