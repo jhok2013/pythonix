@@ -13,9 +13,10 @@ T9 = TypeVar("T9")
 U = TypeVar("U")
 
 assignments = list(WRAPPER_ASSIGNMENTS)
-assignments.remove('__annotations__')
+assignments.remove("__annotations__")
 updated_assignments = WRAPPER_ASSIGNMENTS
 # updated_assignments = tuple(assignments)
+
 
 def two(func: Callable[[T1, T2], U]) -> Callable[[T1], Callable[[T2], U]]:
     @wraps(func, assigned=updated_assignments)
@@ -24,6 +25,7 @@ def two(func: Callable[[T1, T2], U]) -> Callable[[T1], Callable[[T2], U]]:
             return func(t1, t2)
 
         return in2
+
     return in1
 
 

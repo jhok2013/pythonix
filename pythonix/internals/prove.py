@@ -1,12 +1,9 @@
-'''Partialized functions for safe and simple assertions
+"""Partialized functions for safe and simple assertions
 
 This module provides ways to perform common assertion patterns like
 equals, type tests, and testing for the presence of elements in data.
 
-Note:
-    All function return values are Ok[None] or Err[AssertionError].
-    Use the res module to handle the outcomes of the assertions.
-'''
+"""
 from typing import Iterable, TypeVar, Callable
 from pythonix.internals.curry import two
 from pythonix.internals.res import safe
@@ -19,7 +16,7 @@ NewVal = TypeVar("NewVal")
 @safe(AssertionError)
 def that(predicate: Callable[[Val], bool], val: Val) -> None:
     """Assert that the provided function is true if given the value.
-    
+
     Note:
         This is useful with a `Do` pipe to check that values match what you expect without
     changing the original value.
@@ -32,7 +29,7 @@ def that(predicate: Callable[[Val], bool], val: Val) -> None:
         res.unwrap(passed_inspection)
 
         # Bind shorthand
-        Bind(10).do(prove.that(is_even))(q)
+        Bind(10)(prove.that(is_even))(q)
         ```
     """
     assert predicate(val) == True
@@ -41,16 +38,28 @@ def that(predicate: Callable[[Val], bool], val: Val) -> None:
 @two
 @safe(AssertionError)
 def equals(left: NewVal, right: Val) -> None:
-    """
-    Assert that two values are equal
+    """Assert that two values are equal.
+
+    Example:
+        ```python
+        expected: int = 10
+        actual: int = 10
+        comparison_result: Res[None, AssertionError] = prove.equals(expected)(actual)
+        res.unwrap(comparison_result)
+        ```
     """
     assert left == right
 
 
 @safe(AssertionError)
 def is_true(val: bool) -> None:
-    """
-    Assert that the provided value is `True`
+    """Assert that the provided value is `True`
+
+    Example:
+        ```python
+        true_value: bool = True
+        comparison_result
+        ```
     """
     assert val == True
 

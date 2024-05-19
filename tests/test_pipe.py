@@ -14,12 +14,12 @@ class TestPipes(TestCase):
                 self.assertTrue
             )
         )
-    
+
     def test_to_do(self) -> None:
         (
-            self.bind
-            .do(lambda _: True)(lambda _: 'Hello')
-            .bind(lambda _: True)(self.assertTrue)
+            self.bind.do(lambda _: True)(lambda _: "Hello").bind(lambda _: True)(
+                self.assertTrue
+            )
         )
 
     def test_do(self) -> None:

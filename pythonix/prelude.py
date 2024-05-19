@@ -30,6 +30,7 @@ And the following Function aliases
 
 ## Included Functions
 And the following utility functions
+- `fn`: Helps create type hinted lambda functions
 - `q`: Unwraps the value of an `Ok` or panics if `Err`. Shorthand for `res.unwrap`
 - `qe`: Unwraps the err value of an `Err` or panics if `Ok`. Shorthand for `res.unwrap_err`
 """
@@ -45,6 +46,7 @@ import pythonix.grammar as grammar
 import pythonix.prove as prove
 import pythonix.mdeq as mdeq
 from pythonix.grammar import P
+from pythonix.fn import fn
 
 from pythonix.res import Ok, Err, Nil, q, Res, qe
 from pythonix.pipe import Bind, Do

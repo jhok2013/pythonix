@@ -1,31 +1,36 @@
-"""
-Module that provides object types for performing consecutive operations on a value
-in a pipeline. This emulates `|>` operator in other programming languages.
-#### Example
-```python
-from pythonix import pipes
+"""Essential classes for chaining function calls over values in a concise way
 
-# Perform a series of transformations cleanly with `Bind`
-bind: Bind[int] = Bind(5)
-(
-    bind
-    (lambda x: x * 2)   # (y: int) Perform an arbitrary function
-    (lambda x: x == 10) # (y: bool) Perform a function that changes type
-    (str)               # (y: str) Convert to a new type
-    (print)             # (y: None) Make a side effect
-)
-assert bind.inner is None
+The module contains classes for repeatedly binding, piping, or doing things to values
+sequentially and concisely.
 
-# If you want to perform operations without changing the content of the value, use `Do` instead
-do: Do[str] = Do("hello world")
-(
-    do
-    (print)
-    (type)
-    (lambda s: print(f'{s}, the sun says hello!'))
-)
-assert do.inner = "hello world"
-```
+For when you want to chain function calls that change the internal state, use Bind.
+For when you want to test side effects without changing the internal state, use Do.
+
+Examples:
+
+    Normal Flow:
+        ```python
+        import logging
+
+        foo_list: list[int] = [0, 1, 3, 4]
+        first: int = foo_list[0] 
+        
+        assert first == 0
+            
+        ```
+    
+    With Bind and Do:
+        ```python
+        import logging
+        from pythonix.prelude import *
+
+        (
+            Bind([0, 1, 3, 4])
+            (lambda d: d[0])
+            (prove.equals(10))
+            (res.unwrap)
+        )
+        ```
 """
 
 from pythonix.internals.pipe import Bind, Do

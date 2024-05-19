@@ -100,29 +100,14 @@ class TestErr(TestCase):
 
 
 class TestDecorators(TestCase):
-
     def test_safe(self) -> None:
         op: Fn[str, str] = lambda x: x
         proto_op = safe(TypeError, AttributeError)(op)
-        (
-            pipe.Bind('hello')
-            (proto_op)            
-            (res.q)
-            (lambda s: self.assertEqual(s, 'hello'))
-        )
-
+        (pipe.Bind("hello")(proto_op)(res.q)(lambda s: self.assertEqual(s, "hello")))
 
     def test_safe_fail(self) -> None:
-
         @safe(TypeError)
         def will_throw_type_error(_):
-            raise TypeError('Failed successfully')
-        
-        (
-            pipe.Bind(None)
-            (will_throw_type_error)
-            (res.qe)
-            (self.assertIsNotNone)
-        )
-        
+            raise TypeError("Failed successfully")
 
+        (pipe.Bind(None)(will_throw_type_error)(res.qe)(self.assertIsNotNone))

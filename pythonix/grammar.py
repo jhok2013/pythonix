@@ -39,9 +39,12 @@ Example:
     ```
 """
 from pythonix.internals.grammar import (
-    PipeApply,
     PipeSuffix,
     PipeInfix,
     PipePrefix,
+    PipeApplyInfix,
+    PipeApplyPrefix,
+    PipeApplySuffix,
+    Piper,
     P,
 )

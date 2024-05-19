@@ -83,18 +83,18 @@ K = TypeVar("K", str, int, float, tuple, slice)
 
 
 def filterx(using: Callable[[T], bool]) -> Callable[[Iterable[T]], Iterator[T]]:
-    """Filter over an `Iterable` with a function. 
-    
+    """Filter over an `Iterable` with a function.
+
     Function takes each of its elements and returns a True or False.
     True evaluations are kept while False are not kept in the result.
 
     Note:
         Returns a lazy iterator that must be collected.
-    
+
     Args:
         using ((T) -> bool): Function that takes a value *T* and returns True or False
         iterable (Iterable[T]): List, tuple, or other iterable
-    
+
     Returns:
         iterator (Iterator[T]): Lazy iterator of the same type as the iterable, but with only the elements
         that evaluated to True
@@ -124,11 +124,11 @@ def mapx(using: Callable[[T], U]) -> Callable[[Iterable[T]], Iterator[U]]:
 
     Note:
         Returns a lazy iterator that must be collected.
-    
+
     Args:
         using ((T) -> U): Function that will be applied over each element of the Iterable
         iterable (Iterable[T]): List, tuple, or other iterable.
-    
+
     Returns:
         iterator (Iterator[U]): Lazy iterator containing the result of *using* over the *iterable*
 
@@ -143,7 +143,7 @@ def mapx(using: Callable[[T], U]) -> Callable[[Iterable[T]], Iterator[U]]:
             (prove.contains(5))
             (res.unwrap)
         )
-        ```        
+        ```
     """
 
     def get_data(iterable: Iterable[T]) -> Iterator[U]:
@@ -152,15 +152,13 @@ def mapx(using: Callable[[T], U]) -> Callable[[Iterable[T]], Iterator[U]]:
     return get_data
 
 
-def fold(
-    using: Callable[[T, S], U]
-) -> Callable[[Iterable[T | S]], U]:
+def fold(using: Callable[[T, S], U]) -> Callable[[Iterable[T | S]], U]:
     """Apply a function to accumulated pairs of elements in an iterable to a single final value
-    
+
     Args:
         using ((T, S) -> U): Function that takes two arguments and returns a single element of the same type
         iterable (Iterable[T | S]): List, tuple, or other sequence of the same type
-    
+
     Returns:
         _ (U): Accumulated final value
 
@@ -175,8 +173,9 @@ def fold(
             |P| prove.equals(10)
             |P| res.unwrap
         )
-        ```    
+        ```
     """
+
     def get_data(iterable: Iterable[T | S]) -> U:
         return reduce(using, iterable)
 
@@ -185,16 +184,16 @@ def fold(
 
 def attr(name: str, type_hint: type[U] = Any) -> Callable[[T], U]:
     """Used to safely retrieve attributes from classes in a functional way.
-    
+
     Can be used with a `type_hint` parameter to provide better type hint support.
 
     Args:
         name (str): The name of the attribute to retrieve
         obj (T): Any object
-    
+
     Returns:
         opt (Res[U, Nil]): Result type containing the desired value if Ok, or Nil if Err
-    
+
     Example:
         ```python
         from pythonix.prelude import *
@@ -230,10 +229,10 @@ def item(index: SupportsIndex | K):
         mapping (Mapping[K, T], Variant): A key value mapping
         sequence (Sequence[T], Variant): A sequence with values
         iterable (Iterable[T], Variant): An iterable that does not inherit from Mapping or Sequence
-    
+
     Returns:
         opt (Res[U, Nil]): Result type containing either the expected value if Ok, or a Nil if Err
-    
+
     Example
         ```python
         from pythonix.prelude import *
@@ -273,16 +272,16 @@ def item(index: SupportsIndex | K):
 
 def arg(val: T) -> Callable[[Callable[[T], U]], U]:
     """Applies a single argument to a function and returns its result.
-    
+
     Useful for piping an argument into a function via `Bind` or `Do`
 
     Args:
         val (T): The value to be applied to the single variable function
         op ((T) -> U): The function that will apply T and output U
-    
+
     Returns:
         output (U): The output of the provided function
-    
+
     Example:
         ```python
         from pythonix.prelude import *
@@ -305,22 +304,22 @@ def arg(val: T) -> Callable[[Callable[[T], U]], U]:
 def assign(key: K):
     """Assign a value to a given index or name on a list, dict or mutable object.
     Has full type support for each of the three different types.
-    
+
     Note:
         Returns a copy of the updated object wrapped in a `Res` that reflects potential errors.
-    
+
     Args:
         key (K): Any value that can be used as a key for a data structure
         val (U): The value to be assigned to the mutable data structure or object
         sequence (MutableSequence[T], variant): First of three options. A list or list like object
         mapping (MutableMapping[K, V], variant): Second of three options. A dict or dict like object
         obj (O, variant): Third of three options. Any object that allows assigning attributes
-    
+
     Returns:
         sequence_copy (Res[MutableSequence[T | U], IndexError]): A copy of the sequence with the additional value wrapped in a result
         mapping_copy (Res[MutableMapping[K, V], IndexError | KeyError]): A copy of the mapping with the additional value wrapped in a result
         obj_copy (Res[O, AttributeError]): A copy of the original object with the attribute assigned, wrapped in a result
-    
+
     Example:
         ```python
         from pythonix.prelude import *
@@ -350,7 +349,7 @@ def assign(key: K):
             |P| op.attr('foo')
             |P| q
         )
-        
+
         ```
     """
 

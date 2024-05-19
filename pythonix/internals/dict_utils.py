@@ -1,11 +1,11 @@
-'''Utility functions for common operations on dictionaries like mapping over keys or values.
+"""Utility functions for common operations on dictionaries like mapping over keys or values.
 
 The functions allow for retrieval and insertion of data on dictionaries in a type safe and
 unsurprising way. Retrieving value by key return results of *Ok[T] | Err[Nil]*. They can then
 be handled using the res submodule or through pattern matching or unpacking. These functions
 are curried with the subject as the last step, which makes them compliant for use with Bind, Do,
 and Pipe.
-'''
+"""
 from typing import TypeVar, Dict, Callable, Mapping, Tuple
 from pythonix.internals.op import item
 
@@ -27,6 +27,7 @@ def map_items(using: Callable[[K, V], Tuple[L, W]]):
         assert d2['hello'] == 'joe boy'
         ```
     """
+
     def get_dict(dict_obj: Dict[K, V]) -> Dict[L, W]:
         return dict((using(k, v) for k, v in dict_obj.items()))
 
@@ -36,7 +37,7 @@ def map_items(using: Callable[[K, V], Tuple[L, W]]):
 def map_keys(using: Callable[[K], L]):
     """Runs the provided function over each key in a dictionary, returning a new
     dictionary with the updated keys and the same values
-    
+
     Example:
         ```python
         data: dict[str, int] = {'First': 1, 'Second': 2}
@@ -96,7 +97,7 @@ def filter_keys(predicate: Callable[[K], bool]):
 def filter_values(predicate: Callable[[V], bool]):
     """Runs the provided filter function over the values in a `dict`, returning a new `dict`
     with only the values that evaluated to `True`
-    
+
     Example:
         ```python
         import pythonix.dict_utils as dict_utils

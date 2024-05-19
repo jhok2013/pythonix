@@ -9,7 +9,9 @@ class TestTrail(TestCase):
     bind = p.Bind(t.new(t.info("Starting in Bind"))(5))
 
     def test_blaze(self) -> None:
-        decorated: Callable[[int], int] = t.trail(t.info("Using decorator"))(lambda x: x)
+        decorated: Callable[[int], int] = t.trail(t.info("Using decorator"))(
+            lambda x: x
+        )
         logs = self.blaze(lambda x: x, t.info("Returning same"))(decorated).logs
 
         self.assertEqual(len(logs), 3, str(logs))
