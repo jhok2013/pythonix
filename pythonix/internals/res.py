@@ -64,7 +64,8 @@ class Ok(Generic[T], NamedTuple):
 class Err(Generic[E], NamedTuple):
     """Represents a successful outcome of a function that could have failed.
 
-    Useful for pattern matching on a function that returns `Ok[T] | Err[E]`
+    Useful for pattern matching on a function that returns `Ok[T] | Err[E]`.
+    Contained value must be a subclass of ``Exception``.
 
     Note:
         The preferred constructor is ``err``, as it preserves type information
@@ -95,11 +96,20 @@ Example: ::
     
 """
 
+Opt: TypeAlias = Ok[T] | Err[Nil]
+"""Type alias for ``Ok[T] | Err[Nil]``. Useful for quick annotations and types.
+
+Example: ::
+
+    >>> maybe_int: Opt[int] = some(10)
+
+"""
 
 def err(ok_type: type[T]) -> Callable[[E], Res[T, E]]:
     """Creates an ``Err[E]`` while also providing type information for ``Ok[T]``
 
     Use this rather than manually instantiating ``Ok`` or ``Err``.
+    Contained value must be a subclass of ``Exception``.
 
     Example: ::
 
@@ -144,7 +154,7 @@ def ok(err_type: type[E]) -> Callable[[T], Res[T, E]]:
     return get_err
 
 
-def some(inner: T | None) -> Res[T, Nil]:
+def some(inner: T | None) -> Opt[T]:
     """Converts a potentially None value to a result Res[T, Nil]
 
     Use this to put potentially null values into the ``res`` ecosystem
@@ -219,8 +229,21 @@ def is_err(res: Res[T, E]) -> bool:
 
 
 def is_ok_and(predicate: Callable[[T], bool]) -> Callable[[Res[T, E]], bool]:
-    """
-    Return `True` if the `Res` is `Ok` and the `predicate` evaluates to `True`.
+    """Return `True` if the `Res` is `Ok` and the `predicate` evaluates to `True`
+
+    Args:
+        *predicate* ((T) -> bool): Func to be evaluated against inner
+        *res* (Res[T, E]): Result of ``Ok`` or ``Err``
+
+    Returns:
+        *output* (bool): ``True`` if ``Ok`` and *predicate* evaluates to ``True``
+
+    Example: ::
+
+        >>> outcome: Res[int, ValueError] = ok(ValueError)(10)
+        >>> is_ok_and(lambda x: x > 2)(outcome)
+        True
+
     """
 
     def inner(res: Res[T, E]) -> bool:
@@ -234,8 +257,21 @@ def is_ok_and(predicate: Callable[[T], bool]) -> Callable[[Res[T, E]], bool]:
 
 
 def is_err_and(predicate: Callable[[E], bool]) -> Callable[[Res[T, E]], bool]:
-    """
-    Return `True` if the `Res` is `Err` and the `predicate` evaluates to `True`
+    """Return `True` if the `Res` is `Err` and the *predicate* evaluates to `True`
+
+    Args:
+        *predicate* ((E) -> bool): Func to be evaluated against inner
+        *res* (Res[T, E]): Result of ``Ok`` or ``Err``
+
+    Returns:
+        *output* (bool): ``True`` if ``Err`` and *predicate* evaluates to ``True``
+
+    Example: ::
+
+        >>> outcome: Res[int, ValueError] = err(int)(ValueError('foo'))
+        >>> is_err_and(lambda e: str(e) == 'foo')(outcome)
+        True
+
     """
 
     def inner(res: Res[T, E]) -> bool:
@@ -248,11 +284,37 @@ def is_err_and(predicate: Callable[[E], bool]) -> Callable[[Res[T, E]], bool]:
     return inner
 
 
-def unwrap(result: Res[T, E]) -> T:
+def unwrap(res: Res[T, E]) -> T:
+    """Returns the wrapped value if ``Ok``, or will raise the exception if ``Err``.
+
+    Avoid using this if possible unless wrapped in ``safe`` decorator with a
+    matching Exception being caught, or unless you know the output is ``Ok`` with
+    ``is_ok`` or ``is_err``.
+
+    Args:
+        *res* (Res[T, E]): ``Ok`` or ``Err`` to be unwrapped
+
+    Returns:
+        *output* (T): Contained value from ``Ok`` 
+    
+    Example:
+
+        If Ok: ::
+
+            >>> res: Res[int, ValueError] = ok(ValueError)(10)
+            >>> unwrap(res)
+            10
+        
+        If Err: ::
+
+            >>> res: Res[int, ValueError] = err(int)(ValueError())
+            >>> unwrap(res)
+            Traceback (most recent call last):
+              File "<stdin>", line 1, in <module>
+                raise e
+            ValueError
     """
-    Return the `Ok` value or panic if `Err`
-    """
-    match result:
+    match res:
         case Ok(value):
             return cast(T, value)
         case Err(e):
@@ -260,8 +322,24 @@ def unwrap(result: Res[T, E]) -> T:
 
 
 def unwrap_or(default: T) -> Callable[[Res[T, E]], T]:
-    """
-    Return the `Ok` value if `Ok`, else return the default
+    """Return the `Ok` value if `Ok`, else return the default
+
+    Args:
+        *default* (T): The value to be returned if ``Err``
+        *res* (Res[T, E]): The ``Ok`` or ``Err``
+    
+    Returns:
+        *output* (T): The default, or value from the ``Ok``
+    
+    Example: ::
+
+        >>> _ok_res: Res[int, ValueError] = ok(ValueError)(10)
+        >>> unwrap_or(0)(_ok_res)
+        10
+        >>> _err_res: Res[int, ValueError] = err(int)(ValueError())
+        >>> unwrap_or(0)(_err_res)
+        0
+
     """
 
     def inner(res: Res[T, E]) -> T:
@@ -275,8 +353,26 @@ def unwrap_or(default: T) -> Callable[[Res[T, E]], T]:
 
 
 def unwrap_or_else(on_err: Callable[[], T]) -> Callable[[Res[T, E]], T]:
-    """
-    Return the `Ok` value if `Ok`, else run the `on_err` function that returns the same type.
+    """Return the `Ok` value if `Ok`, else run the `on_err` function
+    that returns the same type.
+
+    Args:
+        *on_err* (() -> T): Callback func for if ``Err``
+        *res* (Res[T, E]): Result of ``Ok`` or ``Err``
+    
+    Returns:
+        *output* (T): The wrapped value, or default value of the same type
+    
+    Examples: ::
+
+        >>> ok_outcome: Res[int, ValueError] = ok(ValueError)(10) 
+        >>> on_err = lambda: 0
+        >>> unwrap_or_else(on_err)(ok_outcome)
+        10
+        >>> err_outcome: Res[int, ValueError] = err(int)(ValueError('foo'))
+        >>> unwrap_or_else(on_err)(err_outcome)
+        0
+
     """
 
     def inner(res: Res[T, E]) -> T:
@@ -290,8 +386,35 @@ def unwrap_or_else(on_err: Callable[[], T]) -> Callable[[Res[T, E]], T]:
 
 
 def unwrap_err(result: Res[T, E]) -> E:
-    """
-    Return the `Err`, else panic if `Ok`
+    """Returns the wrapped Exception if ``Err``, or panice if ``Ok``.
+
+    Avoid using this if possible unless wrapped in ``safe`` decorator with a
+    matching Exception being caught, or unless you know the output is ``Ok`` with
+    ``is_ok`` or ``is_err``.
+
+    Args:
+        *res* (Res[T, E]): ``Ok`` or ``Err`` to be unwrapped
+
+    Returns:
+        *output* (T): Contained value from ``Ok`` 
+    
+    Examples:
+
+        If Ok: ::
+
+            >>> res: Res[int, ValueError] = ok(ValueError)(10)
+            >>> unwrap_err(res)
+            Traceback (most recent call last):
+              File "<stdin>", line 1, in <module>
+                raise e
+            ValueError: Attempted to retrieve an Err from an Ok
+        
+        If Err: ::
+
+            >>> res: Res[int, ValueError] = err(int)(ValueError())
+            >>> unwrap_err(res)
+            ValueError()
+
     """
     match result:
         case Ok():
@@ -301,8 +424,35 @@ def unwrap_err(result: Res[T, E]) -> E:
 
 
 def map(using: Callable[[T], U]) -> Callable[[Res[T, E]], Res[U, E]]:
-    """
-    Run the function on the `Ok` if `Ok`, else return the current `Err`
+    """Run the function on the `Ok` if `Ok`, else return the current `Err`
+
+    Useful for conditionally transforming ``Res`` values, independent of their
+    state.
+
+    Note:
+        This will only transform the ``Ok``, not the ``Err`` value
+    
+    Args:
+        *using* ((T) -> U): Function to be ran on the ``Ok`` inner value if ``Ok``
+        *res* (Res[T, E]): An ``Ok[T]`` or ``Err[E]``, a.k.a ``Res[T, E]`` 
+
+    Returns:
+        *output* (Res[U, E]): A new result with the updated ``Ok`` value
+    
+    Examples: ::
+
+        >>> ok_outcome: Res[int, ValueError] = ok(ValueError)(10)
+        >>> mapped_ok: Res[str, ValueError] = map(str)(ok_outcome)
+        >>> unwrap(mapped_ok)
+        '10'
+        >>> err_outcome: Res[int, ValueError] = err(int)(ValueError())
+        >>> mapped_err: Res[str, ValueError] = map(str)(err_outcome)
+        >>> unwrap(mapped_err)
+        Traceback (most recent call last):
+            unwrap(mapped_err)
+            raise e
+        ValueError
+    
     """
 
     def inner(res: Res[T, E]) -> Res[U, E]:
@@ -316,8 +466,24 @@ def map(using: Callable[[T], U]) -> Callable[[Res[T, E]], Res[U, E]]:
 
 
 def map_or(using: Callable[[T], U]) -> Callable[[U], Callable[[Res[T, E]], Res[U, E]]]:
-    """
-    Runs the function on the `Ok` or return the `default` if `Err`
+    """Runs the function on the `Ok` or return the `default` if `Err`
+
+    Args:
+        *using* ((T) -> U): Function that takes the wrapped ``Ok`` value, and returns another
+        *default* (U): Default value that is the same type as what *using* would return
+    
+    Returns:
+        *output* (Res[U, E]): Updated ``Ok`` value, or ``Err``
+    
+    Examples: ::
+
+        >>> ok_outcome: Res[int, ValueError] = ok(ValueError)(10)
+        >>> err_outcome: Res[int, ValueError] = err(int)(ValueError())
+        >>> unwrap_or(0)(ok_outcome)
+        10
+        >>> unwrap_or(0)(err_outcome)
+        0
+
     """
 
     def get_default(
@@ -336,8 +502,25 @@ def map_or(using: Callable[[T], U]) -> Callable[[U], Callable[[Res[T, E]], Res[U
 
 
 def map_err(using: Callable[[E], F]) -> Callable[[Res[T, E]], Res[T, F]]:
-    """
-    Runs the function on the `ErrVal` if in `Err` or returns the current `Ok`
+    """Runs the function on the `ErrVal` if in `Err` or returns the current `Ok`
+
+    Useful for converting Exceptions from one type to another.
+
+    Args:
+        *using* ((E) -> F): Function that takes an Exception and returns an Exception
+        *res* (Res[T, E]): An ``Ok`` or ``Err``
+    
+    Returns:
+        *output* (Res[T, F]): Result with an updated ``Err`` value
+    
+    Examples: ::
+
+        >>> err_outcome: Res[int, ValueError] = err(int)(ValueError())
+        >>> to_type_error = lambda e: TypeError(str(e))
+        >>> mapped_err: Res[int, TypeError] = map_err(to_type_error)(err_outcome)
+        >>> unwrap_err(mapped_err)
+        TypeError('')
+
     """
 
     def inner(res: Res[T, E]) -> Res[T, E]:
@@ -350,36 +533,31 @@ def map_err(using: Callable[[E], F]) -> Callable[[Res[T, E]], Res[T, F]]:
     return inner
 
 
-def map_catch(
-    using: Callable[[T], U]
-) -> Callable[[type[E]], Callable[[Res[T, E]], Res[U, E]]]:
-    """
-    Runs the function that could fail if `Ok`, else return the current `Err`
-    """
-
-    def get_catch(
-        catch: type[E],
-    ) -> Callable[[Res[T, E]], Res[U, E]]:
-        def inner(res: Res[T, E]) -> Res[U, E]:
-            match res:
-                case Ok(t):
-                    try:
-                        return ok(E)(using(t))
-                    except catch as e:
-                        return err(U)(e)
-                case Err(e):
-                    return cast(Res[U, E], res)
-
-        return inner
-
-    return get_catch
-
-
 def map_or_else(
     using: Callable[[T], U]
 ) -> Callable[[Callable[[], U]], Callable[[Res[T, E]], Res[U, E]]]:
-    """
-    Runs the provided function if `Ok`, or runs the default function if `Err`
+    """Runs the provided function if `Ok`, or runs the default function if `Err`
+
+    Args:
+        *using* ((T) -> U): Func that takes and returns a value
+        *default* (() -> U): Func that returns a default value of the same type
+        *res* (Res[T, E]): A result of ``Ok`` or ``Err``
+    
+    Returns:
+        *output* (Res[U, E]): New result with updated ``Ok``
+    
+    Examples: ::
+
+        >>> ok_outcome: Res[int, Nil] = some(10)
+        >>> default = lambda: '0'
+        >>> mapped_ok: Res[str, Nil] = map_or_else(str)(default)(ok_outcome)
+        >>> unwrap(mapped_ok)
+        '10'
+        >>> err_outcome: Res[int, Nil] = err(int)(Nil())
+        >>> mapped_err: Res[str, Nil] = map_or_else(str)(default)(err_outcome)
+        >>> unwrap(mapped_err)
+        '0'
+
     """
 
     def get_default(default: Callable[[], U]) -> Callable[[Res[T, E]], Res[U, E]]:
@@ -396,8 +574,36 @@ def map_or_else(
 
 
 def and_then(using: Callable[[T], Res[U, E]]) -> Callable[[Res[T, E]], Res[U, E]]:
-    """
-    Runs the function that returns a new `Res` if `Ok`, else return the current `Err`
+    """Replaces *res* with new result from *using*s output
+
+    This is useful when you need to run functions that also return a result.
+
+    Note:
+        Preserve type hints by making sure that the `E` values are the same
+    
+    Args:
+        *using* ((T) -> Res[U, E]): Func that takes a value and returns a ``Res``
+        *res* (Res[T, E]): ``Res`` that provides input for *using* if ``Ok``
+    
+    Returns:
+        *output* (Res[U, E]): Output of *using* if *res* is ``Ok``
+    
+    Examples: ::
+
+        >>> succeeds = lambda x: some(str(x))
+        >>> ok_outcome: Opt[int] = some(10)
+        >>> err_outcome: Opt[int] = err(int)(Nil())
+        >>> new_ok: Opt[str] = and_then(succeeds)(ok_outcome)
+        >>> unwrap(new_ok)
+        '10'
+        >>> new_err: Opt[str] = and_then(succeeds)(err_outcome)
+        >>> unwrap(new_err)
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+            unwrap(new_err)
+            raise e
+        res.Nil: Did not expect None
+
     """
 
     def inner(res: Res[T, E]) -> Res[U, E]:
@@ -410,9 +616,26 @@ def and_then(using: Callable[[T], Res[U, E]]) -> Callable[[Res[T, E]], Res[U, E]
     return inner
 
 
-def or_else(using: Callable[[E], Res[U, F]]) -> Callable[[Res[T, E]], Res[T, F]]:
-    """
-    Runs the function that returns a new `Res` if in `Err`, else it will return the current `Ok`
+def or_else(using: Callable[[E], Res[T, F]]) -> Callable[[Res[T, E]], Res[T, F]]:
+    """Runs *using* to replace current state if ``Err``, else returns current state.
+
+    Useful for aligning err values for future calls, or for running a separate
+    process on failure.
+
+    Args:
+        *using* ((E) -> Res[T, F]): Func that takes ``E`` and returns a new ``Res``
+        *res* (Res[T, E]): ``Res`` whose ``E`` will be used as input if ``Err``
+    
+    Returns:
+        *output* (Res[T, F]): ``Res`` with updated ``Err`` value, or same ``Ok``
+    
+    Examples: ::
+
+        >>> err_outcome: Res[int, ValueError] = err(int)(ValueError())
+        >>> on_fail = lambda _: Nil()
+        >>> new_err: Res[int, Nil] = or_else(on_fail)(err_outcome)
+        >>> unwrap_err(new_err)
+        
     """
 
     def inner(res: Res[T, E]) -> Res[T, F]:
@@ -425,49 +648,24 @@ def or_else(using: Callable[[E], Res[U, F]]) -> Callable[[Res[T, E]], Res[T, F]]
     return inner
 
 
-def and_then_catch(using: Callable[[T], U]):
-    """
-    Runs the function that could fail, catching the specified error and returning a new `Res`.
-    Will only be ran if `Ok`, else it will return its current `Err`
-    """
-
-    def get_catch(
-        catch: type[F],
-    ) -> Callable[[Res[T, E]], Res[U, E | F]]:
-        def inner(res: Res[T, E]) -> Res[U, E | F]:
-            match res:
-                case Ok(t):
-                    try:
-                        return cast(Res[U, E | F], ok(E)(using(t)))
-                    except catch as f:
-                        return cast(Res[U, E | F], err(U)(f))
-                case Err(f):
-                    return cast(Res[U, E | F], err(U)(f))
-
-        return inner
-
-    return get_catch
-
-
-def map_err(using: Callable[[E], F]):
-    """
-    Changes the internal `Err` using the function if in an `Err` state. Otherwise it returns
-    the `Ok`
-    """
-
-    def inner(res: Res[T, E]) -> Res[T, F]:
-        match res:
-            case Err(e):
-                return err(T)(using(e))
-            case _:
-                return cast(Res[T, F], res)
-
-    return inner
-
-
 def and_res(new_res: Res[U, E]) -> Callable[[Res[T, E]], Res[U, E]]:
-    """
-    Returns the provided result if the old one is `Ok`
+    """Returns the provided result if the old one is `Ok`
+
+    Args:
+        *new_res* (Res[U, E]): Replacement ``Res``. Must match on ``E``
+        *old_res* (Res[T, E]): Original ``Res``. Must match on ``E``
+    
+    Returns:
+        *output* (Res[U, E]): Resolved ``Res`` with expected values
+    
+    Examples: ::
+
+        >>> old: Opt[int] = some(10)
+        >>> new: Opt[str] = some('hello')
+        >>> resolved: Opt[str] = and_res(new)(old)
+        >>> unwrap(resolved)
+        'hello'
+
     """
 
     def inner(old_res: Res[T, E]) -> Res[U, E]:
@@ -481,8 +679,23 @@ def and_res(new_res: Res[U, E]) -> Callable[[Res[T, E]], Res[U, E]]:
 
 
 def or_res(new_res: Res[T, F]) -> Callable[[Res[T, E]], Res[T, F]]:
-    """
-    Returns the provided result if the current one is an `Err`
+    """Returns the provided result if the current one is an `Err`
+
+    Args:
+        *new_res*: (Res[T, F]): Becomes the new result if old one is ``Err``
+        *old_res*: (Res[T, E]): Original result
+    
+    Returns:
+        *output* (Res[T, F]): New result, or original if it was ``Ok``
+    
+    Examples: ::
+
+        >>> new: Res[int, ValueError] = err(int)(ValueError())
+        >>> old: Res[int, TypeError] = err(int)(TypeError())
+        >>> resolved: Res[int, ValueError] = or_res(new)(old)
+        >>> unwrap_err(resolved)
+        ValueError()
+    
     """
 
     def inner(old_res: Res[T, E]) -> Res[T, F]:
@@ -496,8 +709,22 @@ def or_res(new_res: Res[T, F]) -> Callable[[Res[T, E]], Res[T, F]]:
 
 
 def flatten(res: Res[Res[T, E], F]) -> Res[T, E | F]:
-    """
-    Flattens a `Res` containing a `Res`
+    """Flattens a `Res` containing a `Res`. Not recursive.
+
+    Args:
+        *res* (Res[Res[T, E], F]): A ``Res``, whose ``Ok`` is also a ``Res``
+    
+    Returns:
+        *output* (Res[T, E | F]): A new ``Res``, whose ``Err`` could be either of
+        the contained error values
+    
+    Examples: ::
+
+        >>> nested = ok(ValueError)(ok(TypeError)(10))
+        >>> flat: Res[int, ValueError | TypeError] = flatten(nested)
+        >>> unwrap(flat)
+        10
+    
     """
     match res:
         case Ok(inner_res):
@@ -506,48 +733,37 @@ def flatten(res: Res[Res[T, E], F]) -> Res[T, E | F]:
             return res
 
 
-def do(using: Callable[[U], V]):
-    def inner(res: Res[T, E]) -> Res[T, E]:
-        match res:
-            case Ok(val):
-                using(val)
-                return res
-            case Err():
-                return res
-
-    return inner
-
-
-def do_err(using: Callable[[F], G]):
-    def inner(res: Res[T, E]) -> Res[T, E]:
-        match res:
-            case Ok():
-                return res
-            case Err(e):
-                using(e)
-                return res
-
-    return inner
-
-
 def safe(*err_type: type[E]):
-    """
-    Decorator function used to capture the specified errors and convert them to
-    a `Res[Val, ErrVal]` type. Can capture multiple error types at once and preserves
-    type hints for the `Res`.
-    #### Example
-    ```python
-    # The two functions are equivalent
-    @safe(ValueError, TypeError)
-    def func_1():
-        return 'success'
+    """Decorator function to catch raised ``Exception`` and return ``Res[T, E]``
 
-    def func_2():
-        try:
-            return ok('success')(ValueError | TypeError)
-        except (ValueError, TypeError) as e:
-            return err(str)(e)
-    ```
+    ``T`` is the original return value and ``E`` is the combination of specified
+    ``Exceptions``
+
+    Note:
+        Multiple ``Exception``s can be specified in the first call
+
+    Args:
+        *err_type* (type[E]): *Args tuple of ``Exception`` types to catch
+        *using* ((P) -> U): Any function with typed arguments and return values
+    
+    Returns:
+        *wrapped* ((P) -> Res[U, E]): Wrapped function that returns a result instead
+        of its original result, catching the thrown errors if any.
+    
+    Examples: ::
+
+        >>> @safe(KeyError)
+        ... def access(data: dict[str, str], key: str) -> str:
+        ...     return data[key]
+        ...
+        >>> data: dict[str, str] = {'hello': 'world'}
+        >>> element: Res[str, KeyError] = access(data, 'hello')
+        >>> unwrap(element)
+        'world'
+        >>> bad_element: Res[str, KeyError] = access(data, 'hola')
+        >>> unwrap_err(bad_element)
+        KeyError('hola')
+    
     """
 
     def inner(using: Callable[P, U]) -> Callable[P, Res[U, E]]:
@@ -564,25 +780,59 @@ def safe(*err_type: type[E]):
 
 
 def null_safe(using: Callable[P, U | None]):
-    """
-    Wraps the output of the function in a `Res[T, Nil]` object.
+    """Captures returned ``None`` values, converting to ``Opt[U]``
+
+    Args:
+        *using* ((P) -> U | None): Function that could return None
+    
+    Returns:
+        *wrapped* ((P) -> Opt[U]): Function that returns ``Opt[U]``
+    
+    Examples: ::
+
+        >>> @null_safe
+        ... def get(index: str, data: dict[str, str]) -> str | None:
+        ...     return data.get(index)
+        ...
+        >>> data: dict[str, str] = {'hello': 'world'}
+        >>> maybe: Opt[str] = get('hello', data)
+        >>> unwrap(maybe)
+        'world'
+
     """
 
     @wraps(using)
-    def inner(*args: P.args, **kwargs: P.kwargs) -> Res[U, Nil]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> Opt[U]:
         return some(using(*args, **kwargs))
 
     return inner
 
 
 def null_and_error_safe(*err_types: type[E]):
-    """
-    Wraps the output in the `some` function and consumes the error if it is thrown, replacing it with `Nil`
+    """Captures errors like ``safe``, but also checks for ``None`` like ``null_safe``
+
+    Args:
+        *err_type* (type[E]): *Args tuple of ``Exception`` types to catch
+        *using* ((P) -> T | None): Function that could fail, and could also return None
+    
+    Returns:
+        *output* ((P) -> Opt[T]): Function that handles errors and Nones
+        
+    Examples: ::
+        
+        >>> @null_and_error_safe(KeyError)
+        ... def get(index: str, data: dict[str, str]) -> str | None:
+        ...     return data[index]
+        ...
+        >>> data: dict[str, str] = {'hello': 'world'}
+        >>> maybe: Opt[str] = get('hello', data)
+        >>> unwrap(maybe)
+        'world'
     """
 
-    def inner(using: Callable[P, T]):
+    def inner(using: Callable[P, T | None]):
         @wraps(using)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[T, Nil]:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Opt[T]:
             try:
                 return some(using(*args, **kwargs))
             except err_types as e:
@@ -594,20 +844,29 @@ def null_and_error_safe(*err_types: type[E]):
 
 
 def combine_errors(to: F, inherit_message: bool = False):
-    """
-    Decorator function used to convert function that return a `Res[Val, ErrVal]` to `Res[Val, NewErrVal]`, consuming
-    the references to the original captured errors. Useful for when a function could throw a lot of errors and you
-    need to convert them into one error instead.
-    #### Example
-    ```python
-    @combine_errors(CustomError)
-    @safe(TypeError, ValueError)
-    def do_thing(s: str) -> str:
-        if not isinstance(s, str):
-            raise TypeError('Must be str')
-        return s
-    done: Res[str, CustomError] = do_thing('ok')
-    ```
+    """Decorator to combine funcs that return Res to return one error instead of many
+
+    Args:
+        *to* (F: Exception): The exception that will replace the others
+        *inherit_message* (bool = False): Whether to inherit the messages of errors
+        *using* ((P) -> Res[T, E]): Function that could return Ok or Err
+    
+    Returns:
+        *output* ((P) -> Res[T, F]): Function that returns ``Ok`` or ``Err`` with *to*
+        as its potential error value 
+    
+    Examples: ::
+
+        >>> @combine_errors(Nil())
+        ... @safe(KeyError, IndexError)
+        ... def get(index: str, data: dict[str, str]) -> str:
+        ...     return data[index]
+        ...
+        >>> data: dict[str, str] = {'hello': 'world'}
+        >>> element: Opt[str] = get('hola', data)
+        >>> unwrap_err(element)
+        Nil('Did not expect None')
+
     """
 
     def inner(using: Callable[P, Ok[T] | Err[E]]):

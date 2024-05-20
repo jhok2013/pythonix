@@ -1,5 +1,6 @@
 from unittest import TestCase
 from pythonix.prelude import *
+from typing import Callable
 from pythonix.internals.res import safe, safe
 
 
@@ -29,18 +30,12 @@ class TestOk(TestCase):
             res.map_or_else(lambda x: x + 1)(lambda: 0)(self.test_res).inner, 6
         )
         self.assertEqual(
-            res.map_catch(lambda x: x + 1)(Exception)(self.test_res).inner, 6
-        )
-        self.assertEqual(
             res.map_err(lambda e: ValueError(str(e)))(self.test_res).inner, 5
         )
 
     def test_and_funcs(self) -> None:
         self.assertEqual(
             res.and_then(lambda x: res.ok(Exception)(x + 5))(self.test_res).inner, 10
-        )
-        self.assertEqual(
-            res.and_then_catch(lambda x: x + 5)(Exception)(self.test_res).inner, 10
         )
         self.assertEqual(res.and_res(res.ok(Exception)(10))(self.test_res).inner, 10)
 
@@ -70,17 +65,10 @@ class TestErr(TestCase):
         self.assertEqual(
             res.map_or_else(lambda x: x + 1)(lambda: 0)(self.test_res).inner, 0
         )
-        self.assertIsInstance(
-            res.map_catch(lambda x: x + 1)(Exception)(self.test_res).inner, Exception
-        )
 
     def test_and_funcs(self) -> None:
         self.assertIsInstance(
             res.and_then(lambda x: res.ok(x + 5)(Exception))(self.test_res).inner,
-            Exception,
-        )
-        self.assertIsInstance(
-            res.and_then_catch(lambda x: x + 5)(Exception)(self.test_res).inner,
             Exception,
         )
         self.assertIsInstance(
@@ -101,7 +89,7 @@ class TestErr(TestCase):
 
 class TestDecorators(TestCase):
     def test_safe(self) -> None:
-        op: Fn[str, str] = lambda x: x
+        op: Callable[[str], str] = lambda x: x
         proto_op = safe(TypeError, AttributeError)(op)
         (pipe.Bind("hello")(proto_op)(res.q)(lambda s: self.assertEqual(s, "hello")))
 

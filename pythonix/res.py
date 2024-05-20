@@ -195,7 +195,6 @@ def main():
 from pythonix.internals.res import (
     and_res,
     and_then,
-    and_then_catch,
     err,
     flatten,
     is_err,
@@ -203,7 +202,6 @@ from pythonix.internals.res import (
     is_ok,
     is_ok_and,
     map,
-    map_catch,
     map_err,
     map_or,
     map_or_else,
