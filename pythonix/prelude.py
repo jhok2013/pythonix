@@ -11,6 +11,8 @@ TODO
 * add __init__ docs
 * update prelude docs
 * udpate readme
+* test type hints
+* run integration tests
 """
 import pythonix.pipe as pipe
 import pythonix.res as res
