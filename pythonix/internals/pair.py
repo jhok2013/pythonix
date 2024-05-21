@@ -1,22 +1,21 @@
 """Key value pair utility functions to make using pairs easier.
 
-Includes methods for creating pairs, setting and gettings keys and values, and mapping over a value.
+Includes methods for creating pairs, setting and gettings keys and values,
+and mapping over a value.
 
-Example:
-    ```python
-    from pythonix.prelude import *
+Example: ::
 
-    (
-        B(pair.new('foo')(None))
-        (pair.set_key('bar'))
-        (pair.set_value(5))
-        (pair.map(lambda x: x + 5))
-        .do
-        (pair.get_value |P| prove.equals(10) |P| res.unwrap)
-        (pair.get_key |P| prove.equals('bar') |P| res.unwrap)
-        (prove.equals(('bar', 10)) |P| res.unwrap)
-    )
-    ```
+    >>> pair = new('foo')(None)
+    >>> pair = set_key('bar')(pair)
+    >>> pair = set_value(5)(pair)
+    >>> pair = map_value(lambda x: x + 5)(pair)
+    >>> get_value(pair)
+    10
+    >>> get_key(pair)
+    'bar'
+    >>> key, val = pair
+    >>> (key, val)
+    ('bar', 10)
 
 """
 from typing import NamedTuple, Tuple, TypeVar, Generic, TypeAlias, Callable
@@ -36,17 +35,17 @@ class Pair(Generic[T], NamedTuple):
         the convenience function `new`
 
     Attributes:
-        key (str): The key for the pair
-        value (T): Any valid value
+        *key* (str): The key for the pair
+        *value* (T): Any valid value
 
-    Example:
-        ```python
-        from pythonix.prelude import *
+    Example: ::
 
-        foo_pair = pair.Pair('foo', 10)
-        assert foo_pair.key == 'foo'
-        assert foo_pair.value == 10
-        ```
+        >>> foo_pair = Pair('foo', 10)
+        >>> foo_pair.key
+        'foo'
+        >>> foo_pair.value
+        10
+
     """
 
     key: str
@@ -68,14 +67,14 @@ def new(key: KeyStr, value: T) -> Pair[T]:
     Returns:
         pair (Pair[T]): A new pair with the given key and value
 
-    Example:
-        ```python
-        from pythonix.prelude import *
+    Example: ::
 
-        foo_pair = pair.new('foo')(10)
-        assert foo_pair.key == 'foo'
-        assert foo_pair.value == 10
-        ```
+        >>> foo_pair = new('foo')(10)
+        >>> foo_pair.key
+        'foo'
+        >>> foo_pair.value
+        10
+
     """
     return Pair(key, value)
 
@@ -91,18 +90,13 @@ def set_key(key: KeyStr, pair: Pair[T]) -> Pair[T]:
     Returns:
         pair (Pair[T]): A new Pair[T] with the same value but different key
 
-    Example:
-        ```python
-        from pythonix.prelude import *
+    Example: ::
 
-        (
-            pair.new('foo')(10)
-            |P| pair.set_key('bar')
-            |P| pair.get_value
-            |P| prove.equals(10)
-            |P| res.unwrap
-        )
-        ```
+        >>> pair = new('foo')(10)
+        >>> pair = set_key('bar')(pair)
+        >>> pair.key
+        'bar'
+
     """
     return new(key)(pair.value)
 
@@ -118,18 +112,13 @@ def set_value(value: U, pair: Pair[T]) -> Pair[U]:
     Returns:
         new_pair (Pair[U]): A pair with the updated value but identical key
 
-    Example:
-        ```python
-        from pythonix.prelude import *
+    Example: ::
 
-        (
-            pair.new('foo')(5)
-            |P| pair.set_value(10)
-            |P| pair.get_value
-            |P| prove.equals(10)
-            |P| res.unwrap
-        )
-        ```
+        >>> pair = new('foo')(5)
+        >>> pair = set_value(10)(pair)
+        >>> pair.value
+        10
+
     """
     return new(pair.key)(value)
 
@@ -143,17 +132,12 @@ def get_value(pair: Pair[T]) -> T:
     Returns:
         value (T): The contained value
 
-    Example:
-        ```python
-        from pythonix.prelude import *
+    Example: ::
 
-        (
-            pair.new('foo')(10)
-            |P| pair.get_value
-            |P| prove.equals(10)
-            |P| res.unwrap
-        )
-        ```
+        >>> pair = new('foo')(10)
+        >>> get_value(pair)
+        10
+
     """
     return pair.value
 
@@ -167,23 +151,18 @@ def get_key(pair: Pair[T]) -> KeyStr:
     Returns:
         key (KeyStr): The key of the Pair
 
-    Example:
-        ```python
-        from pythonix.prelude import *
+    Example: ::
 
-        (
-            pair.new('foo')(10)
-            |P| pair.get_key
-            |P| prove.equals('key')
-            |P| res.unwrap
-        )
-        ```
+        >>> pair = new('foo')(10)
+        >>> get_key(pair)
+        'foo'
+
     """
     return pair.key
 
 
 @two
-def map(using: Callable[[T], U], pair: Pair[T]) -> Pair[U]:
+def map_value(using: Callable[[T], U], pair: Pair[T]) -> Pair[U]:
     """Change the inner value of a `Pair` with a function
 
     Args:
@@ -194,16 +173,11 @@ def map(using: Callable[[T], U], pair: Pair[T]) -> Pair[U]:
         pair (Pair[U]): A new pair with the same key but new value from the output of the function
 
     Example:
-        ```python
-        from pythonix.prelude import *
 
-        (
-            pair.new('foo')(5)
-            |P| pair.map(lambda x: x + 5)
-            |P| pair.get_value
-            |P| prove.equals(10)
-            |P| res.unwrap
-        )
-        ```
+        >>> pair = new('foo')(5)
+        >>> pair = map_value(lambda x: x + 5)(pair)
+        >>> pair.value
+        10
+
     """
     return set_value(using(pair.value))(pair)

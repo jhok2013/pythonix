@@ -1,8 +1,4 @@
-import pythonix.tup as tup
-from logging import info
-from pythonix.pipe import Bind
-import pythonix.res as res
-from pythonix.res import q
+from pythonix.prelude import *
 from unittest import TestCase
 
 
@@ -16,44 +12,52 @@ class TestTup(TestCase):
         self.assertTupleEqual(expected, actual)
 
     def test_push(self) -> None:
-        bind = Bind(tup.new("Hello"))
+        bind = Piper(tup.new("Hello"))
         expected = (5, "Hello", 10.0, True)
-        seq = bind(tup.push_left(5))(tup.push_right(10.0))(tup.push()(True)).inner
+        seq = bind.bind(tup.push_left(5)).bind(tup.push_right(10.0)).bind(tup.push()(True)).inner
         self.assertTupleEqual(expected, seq)
 
     def test_extend(self) -> None:
-        bind = Bind(tup.new("Hello"))
+        bind = Piper(tup.new("Hello"))
         expected = (5, "Hello", 10.0, True)
-        seq = bind(tup.extend_left(tup.new(5)))(tup.extend_right(tup.new(10.0)))(
+        seq = bind.bind(tup.extend_left(tup.new(5))).bind(tup.extend_right(tup.new(10.0))).bind(
             tup.extend()(tup.new(True))
         ).inner
         self.assertTupleEqual(expected, seq)
 
     def test_getters(self) -> None:
         seq = tup.new("Hello", "there", "Joe")
-        bind = Bind(seq)
-        bind(tup.first)(lambda x: x.inner == "Hello")(self.assertTrue)
-        bind(tup.last)(lambda x: x.inner == "Joe")(self.assertTrue)
-        bind(tup.get(1))(lambda x: x.inner == "there")(self.assertTrue)
+        bind = Piper(seq)
+        bind.bind(tup.first).bind(lambda x: x.inner == "Hello").bind(self.assertTrue)
+        bind.bind(tup.last).bind(lambda x: x.inner == "Joe").bind(self.assertTrue)
+        bind.bind(tup.get(1)).bind(lambda x: x.inner == "there").bind(self.assertTrue)
 
     def test_insertions(self) -> None:
         (
-            Bind(tup.new("Hello"))(tup.insert(1)("Joe"))
+            Piper(tup.new("Hello"))
+            .bind(tup.insert(1)("Joe"))
             .do(lambda seq: self.assertTupleEqual(seq, ("Hello", "Joe")))
-            .bind(tup.insert(0)("Well"))(tup.remove(0))(q)(tup.index("Joe"))(q)(
+            .bind(tup.insert(0)("Well"))
+            .bind(tup.remove(0))
+            .bind(q)
+            .bind(tup.index("Joe"))
+            .bind(q)
+            .bind(
                 lambda index: index == 1
-            )(self.assertTrue)
+            )
+            .bind(self.assertTrue)
         )
 
     def test_counts(self) -> None:
         (
-            Bind(tup.new("Hello", "Joe")).do(
-                lambda seq: Bind(seq)(tup.count_occurrences("Hello"))(
+            Piper(tup.new("Hello", "Joe"))
+            .do(
+                lambda seq: Piper(seq).bind(tup.count_occurrences("Hello")).bind(
                     lambda count: count == 1
-                )(self.assertTrue)
-            )(
-                lambda seq: Bind(seq)(tup.count_occurrences("Pickles"))(
+                ).bind(self.assertTrue)
+            ).do(
+                lambda seq: Piper(seq).bind(tup.count_occurrences("Pickles")).bind(
                     lambda count: count == 0
-                )(self.assertTrue)
+                ).bind(self.assertTrue)
             )
         )

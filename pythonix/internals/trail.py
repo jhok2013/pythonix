@@ -1,12 +1,42 @@
-from __future__ import annotations
+"""Wrap operations and values with logs that can be used at runtime.
+
+Includes functions for wrapping values with logs, creating logs,
+decorating functions to include logs, and running operations
+over values that include or do not include logs.
+
+Example: ::
+
+        >>> add_ten = lambda x: x + 10
+        >>> t = new(info('Initial 10'))(10)
+        >>> t = blaze(add_ten, info('Added another ten'))(t)
+        >>> logs, val = t
+        >>> dt, message = logs[-1]
+        >>> message
+        'Added another ten'
+        >>> val
+        20
+
+    You can also use functions that return a Trail, and blaze will handle
+    the log concatenation. ::
+
+        >>> add_ten_trailer = trail(info('Adding ten with trail'))(add_ten)
+        >>> t = blaze(add_ten_trailer)(t)
+        >>> logs, val = t
+        >>> dt, message = logs[-1]
+        >>> message
+        'Adding ten with trail'
+        >>> val
+        30
+
+"""
 from functools import wraps
 from typing import NamedTuple, Tuple, Callable, ParamSpec, TypeVar, Generic, overload
 from datetime import datetime, timezone
 
 P = ParamSpec("P")
-LogType = TypeVar("LogType", bound="Log")
-Val = TypeVar("Val")
-NewVal = TypeVar("NewVal")
+L = TypeVar("L", bound="Log")
+T = TypeVar("T")
+U = TypeVar("U")
 
 
 class Log(NamedTuple):
@@ -18,6 +48,7 @@ class Log(NamedTuple):
     '''
     created_dt: datetime
     '''datetime object for when the object was created'''
+
     message: str
     '''The log message'''
 
@@ -50,12 +81,20 @@ class Critical(Log):
     ...
 
 
-def log(log_type: type[LogType]):
-    """
-    Creates a function to create a Log
+def log(log_type: type[L]):
+    """Creates a function to create a Log
+
+    Examples: ::
+
+        >>> log_info = log(Info)
+        >>> info_message = log_info('Hello world')
+        >>> time, message = info_message
+        >>> message
+        'Hello world'
+
     """
 
-    def inner(message: str) -> LogType:
+    def inner(message: str) -> L:
         '''Create a Log with the message and type'''
         return log_type(datetime.now(timezone.utc), message)
 
@@ -74,20 +113,46 @@ critical = log(Critical)
 '''Severity: CRITICAL'''
 
 
-class Trail(Generic[Val], NamedTuple):
+class Trail(Generic[T], NamedTuple):
     """Container type used to wrap a value with a series of Log type records
+
+    Note:
+        Create this object with the ``new`` function.
+
+    Examples: ::
+
+        >>> trailed: Trail[int] = new(info('starting'))(10)
+        >>> logs, val = trailed
+        >>> val
+        10
+        >>> log, *rest = logs
+        >>> dt, message = log
+        >>> message
+        'starting'
+
     """
 
     logs: Tuple[Log, ...]
-    inner: Val
+    inner: T
 
 
-def new(*logs: LogType):
+def new(*logs: L):
+    """Create a new `Trail` object with the desired logs attached.
+
+    Example: ::
+
+        >>> trailed: Trail[int] = new(info('starting'))(10)
+        >>> logs, val = trailed
+        >>> val
+        10
+        >>> log, *rest = logs
+        >>> dt, message = log
+        >>> message
+        'starting'
+
     """
-    Create a new `Trail` object with the desired logs attached.
-    """
 
-    def get_inner(inner: Val) -> Trail[Val]:
+    def get_inner(inner: T) -> Trail[T]:
         """
         Attach the wrapped value to the `Trail`
         """
@@ -96,34 +161,61 @@ def new(*logs: LogType):
     return get_inner
 
 
-def append(*logs: LogType):
-    """
-    Append a new series of logs to a `Trail`
+def append(*logs: L):
+    """Append a new series of logs to a `Trail`
+
+    Example: ::
+
+        >>> t = new(info('starting'))(10)
+        >>> t = append(info('ending'))(t)
+        >>> logs, val = t
+        >>> len(logs)
+        2
+
     """
 
-    def inner(trail: Trail[Val]) -> Trail[Val]:
+    def inner(trail: Trail[T]) -> Trail[T]:
         return new(*(trail.logs + logs))(trail.inner)
 
     return inner
 
 
-def logs(trail: Trail[Val]) -> Tuple[LogType, ...]:
-    """
-    Convenience function to return the logs of a `Trail`
+def get_logs(trail: Trail[T]) -> Tuple[L, ...]:
+    """Convenience function to return the logs of a `Trail`
+
+    Example: ::
+
+        >>> t = new(info('hello'))(10)
+        >>> logs = get_logs(t)
+        >>> dt, message = logs[0]
+        >>> message
+        'hello'
+
     """
     return trail.logs
 
 
-def trail(*logs: LogType):
-    """
-    Decorator function used to wrap the output of a function with a default set of logs.
-    This also changes the output of the function to return a `Trail` of the type returned
-    by the function.
+def trail(*logs: L):
+    """Decorator to always attach certain logs to a Trail of the output
+
+    Example: ::
+
+        >>> @trail(info('Starting'))
+        ... def add_ten(x: int) -> int:
+        ...     return x + 10
+        ...
+        >>> logs, val = add_ten(10)
+        >>> val
+        20
+        >>> dt, message = logs[0]
+        >>> message
+        'Starting'
+
     """
 
-    def inner(func: Callable[P, NewVal]):
+    def inner(func: Callable[P, U]):
         @wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Trail[NewVal]:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Trail[U]:
             return new(*logs)(func(*args, **kwargs))
 
         return wrapper
@@ -131,65 +223,55 @@ def trail(*logs: LogType):
     return inner
 
 
-class Blaze(Generic[Val]):
-    """Bind container used to accumulate log messages.
-    
-    Example:
-        ```python
-        blaze: Blaze[int] = Blaze(5, info('Starting'))
-        logs: tuple[Log, ...] = (
-            blaze
-            (lambda x: x + 1, info('Added one'))
-            (lambda x: x / 2, info('Divided by two'), debug('Val is now float'))
-            (lambda x: x,     info('Finished'))
-        ).logs
-        ```   
+@overload
+def blaze(using: Callable[[T], Trail[U]], *logs: L) -> Callable[[Trail[T]], Trail[U]]: ...
+
+@overload
+def blaze(using: Callable[[T], U], *logs: L) -> Callable[[Trail[T]], Trail[U]]: ...
+
+def blaze(using: Callable[[T], Trail[U] | U], *logs: L) -> Callable[[Trail[T]], Trail[U]]:
+    """Mapper to accumulate logs while running
+
+    Can use functions that already return a Trail, or that simply return a value.
+    Add in logs with blaze in addition to any logs already being added by
+    the function.
+
+    Example: ::
+
+        >>> add_ten = lambda x: x + 10
+        >>> t = new(info('Initial 10'))(10)
+        >>> t = blaze(add_ten, info('Added another ten'))(t)
+        >>> logs, val = t
+        >>> dt, message = logs[-1]
+        >>> message
+        'Added another ten'
+        >>> val
+        20
+
+    You can also use functions that return a Trail, and blaze will handle
+    the log concatenation. ::
+
+        >>> add_ten_trailer = trail(info('Adding ten with trail'))(add_ten)
+        >>> t = blaze(add_ten_trailer)(t)
+        >>> logs, val = t
+        >>> dt, message = logs[-1]
+        >>> message
+        'Adding ten with trail'
+        >>> val
+        30
+
     """
 
-    logs: Tuple[Log, ...] = tuple()
-    '''The sequence of accumulated logs'''
-    inner: Trail[Val]
-    '''The wrapped `Trail` value'''
+    def get_val(val: Trail[T]) -> Trail[U]:
 
-    def __init__(self, inner: Val | Trail[Val], *logs: Log):
-        '''Initializes the Blaze object.
+        previous_logs, inner = val
+        out: U | Trail[U] = using(inner)
+
+        match out:
+            case Trail(new_logs, new_inner):
+                return new(*previous_logs + new_logs + logs)(new_inner)
+            case out_val:
+                return new(*previous_logs + logs)(out_val)
         
-        Args:
-            inner (Val | Trail[Val]): The wrapped value. Can be anything or a `Trail` of anything.
-            *logs (Log): Optional series of logs to be accumulated to the Blaze 
+    return get_val
 
-        '''
-        match inner:
-            case Trail():
-                self.inner = inner
-                self.logs = logs + inner.logs
-            case _:
-                self.inner = new()(inner)
-                self.logs = logs
-
-    @overload
-    def __call__(
-        self, using: Callable[[Val], trail.Trail[NewVal]], *logs: Log
-    ) -> Blaze[NewVal]:
-        ...
-
-    @overload
-    def __call__(self, using: Callable[[Val], NewVal], *logs: Log) -> Blaze[NewVal]:
-        ...
-
-    def __call__(
-        self, using: Callable[[Val], Trail[NewVal] | NewVal], *logs: Log
-    ) -> Blaze[NewVal]:
-        """Calls the provided function on the contained value while appending any attached logs
-
-        Args:
-            using ((Val) -> Trail[NewVal] | Newval): Function that takes the contained value
-            and returns a new one wrapped in `Trail` or not.
-            *logs (Log): A series of any Log subclassed objects to be attached with the function call
-        
-        Returns:
-            _ (Blaze[NewVal]): A new instance of a `Blaze` with the updated logs from the `using` function
-            and the `*logs` arguments appended.
-        
-        """
-        return Blaze(using(self.inner.inner), *(self.logs + logs))

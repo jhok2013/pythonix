@@ -1,6 +1,19 @@
-"""
-Utility functions that shore up some of the built in functionality
-for tuples with extensions, pushes, and inserts.
+"""Safely handles tuple sequences with an api like lists
+
+Examples: ::
+
+    >>> data = new(1, 2, 3)
+    >>> data = push_right(4)(data)
+    >>> data = extend_right(new(5, 6, 7))(data)
+    >>> i, nil = index(7)(data)
+    >>> i
+    6
+    >>> count_occurrences(3)(data)
+    1
+    >>> data, nil = remove(1)(data)
+    >>> data
+    (1, 3, 4, 5, 6, 7)
+
 """
 from pythonix.internals.tup import (
     count_occurrences,

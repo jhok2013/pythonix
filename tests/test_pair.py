@@ -1,6 +1,6 @@
 from unittest import TestCase
 import pythonix.pair as p
-from pythonix.pipe import Bind
+from pythonix.prelude import *
 
 
 class TestPair(TestCase):
@@ -26,9 +26,9 @@ class TestPair(TestCase):
 
     def test_get_methods_bind(self) -> None:
         pair = p.new(self.expected_key)(self.expected_value)
-        bind = Bind(pair)
-        key = bind(p.get_key).inner
-        value = bind(p.get_value).inner
+        bind = Piper(pair)
+        key = bind.bind(p.get_key).inner
+        value = bind.bind(p.get_value).inner
         self.assertEqual(key, self.expected_key)
         self.assertEqual(value, self.expected_value)
 
@@ -43,9 +43,9 @@ class TestPair(TestCase):
 
     def test_set_methods_with_bind(self) -> None:
         pair = p.new("hola")("jose")
-        bind = Bind(pair)
+        bind = Piper(pair)
         pair_2 = (
-            bind(p.set_key(self.expected_key))(p.set_value(self.expected_value))
+            bind.bind(p.set_key(self.expected_key)).bind(p.set_value(self.expected_value))
         ).inner
         key = pair_2.key
         value = pair_2.value
@@ -56,7 +56,7 @@ class TestPair(TestCase):
         pair = p.new(self.expected_key)(self.expected_value)
         new_expected = "JoeBoy"
         using = lambda _: new_expected
-        pair_2 = p.map(using)(pair)
+        pair_2 = p.map_value(using)(pair)
         key = pair_2.key
         value = pair_2.value
         self.assertEqual(key, self.expected_key)
@@ -66,8 +66,8 @@ class TestPair(TestCase):
         pair = p.new(self.expected_key)(self.expected_value)
         new_expected = "JoeBoy"
         using = lambda _: new_expected
-        bind = Bind(pair)
-        pair_2 = bind(p.map(using)).inner
+        bind = Piper(pair)
+        pair_2 = bind.bind(p.map_value(using)).inner
         key = pair_2.key
         value = pair_2.value
         self.assertEqual(key, self.expected_key)

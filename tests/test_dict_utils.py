@@ -1,7 +1,7 @@
 from unittest import TestCase
-import pythonix.dict_utils as dict_utils
+import pythonix.dict_utils as du
 import pythonix.res as res
-from pythonix.pipe import Bind as B
+from pythonix.prelude import *
 
 
 class TestDictUtils(TestCase):
@@ -9,24 +9,16 @@ class TestDictUtils(TestCase):
         return super().setUp()
 
     def test_maps(self) -> None:
-        (
-            B({"hello": 0, "joe": 1})(dict_utils.map_values(lambda x: x + 1))(
-                dict_utils.map_values(str)
-            )(dict_utils.map_values(str.upper))(dict_utils.merge({"foo": "3"}))(
-                dict_utils.put("bar")("3")
-            )(
-                dict_utils.filter_values(lambda v: v != "3")
-            )(
-                dict_utils.filter_keys(lambda k: k == "joe")
-            )(
-                dict_utils.get("joe")
-            )(
-                res.map(int)
-            )(
-                res.q
-            )(
-                lambda x: x == 2
-            )(
-                self.assertTrue
-            )
+        x = (
+            Piper({"hello": 0, "joe": 1})
+            >> du.map_values(fn(int, int)(lambda x: x + 1))
+            >> du.map_keys(fn(str, str)(str.upper))
+            >> du.merge({'FOO': 3})
+            >> du.put('BAR')(3)
+            >> du.filter_values(fn(int, bool)(lambda v: v != 3))
+            >> du.filter_keys(fn(str, bool)(lambda k: k == 'JOE'))
+            >> du.get('JOE')
+            >> res.unwrap
+            >> fn(int, bool)(lambda x: x == 2)
+            > self.assertTrue
         )

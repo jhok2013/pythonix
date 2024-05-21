@@ -41,7 +41,7 @@ from typing import (
     Mapping,
 )
 from functools import reduce
-from pythonix.internals.res import null_and_error_safe, safe, Res
+from pythonix.internals.res import null_and_error_safe, safe, Res, Opt
 from pythonix.internals.curry import two
 from operator import setitem
 
@@ -191,20 +191,14 @@ def item(index: SupportsIndex | K):
 
     """
 
-    @null_and_error_safe(IndexError, KeyError)
     @overload
-    def inner(iterable: Mapping[K, T]) -> T:
-        ...
+    def inner(iterable: Mapping[K, T]) -> Opt[T]: ...
 
-    @null_and_error_safe(IndexError)
     @overload
-    def inner(iterable: Sequence[T]) -> T:
-        ...
+    def inner(iterable: Sequence[T]) -> Opt[T]: ...
 
-    @null_and_error_safe(IndexError)
     @overload
-    def inner(iterable: Iterable[T]) -> T:
-        ...
+    def inner(iterable: Iterable[T]) -> Opt[T]: ...
 
     @null_and_error_safe(IndexError, KeyError)
     def inner(iterable: Mapping[K, T] | Sequence[T] | Iterable[T]) -> T:

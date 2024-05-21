@@ -1,5 +1,4 @@
-from pythonix.prelude import op
-from pythonix.pipe import Bind as B
+from pythonix.prelude import *
 from pythonix.res import q, qe
 from operator import add
 from typing import NamedTuple
@@ -18,37 +17,45 @@ class TestOp(TestCase):
 
     def test_attr(self) -> None:
         (
-            B(self.test_class).do(lambda point: B(point)(op.attr("x"))(q))(
-                lambda point: B(point)(op.attr("y"))(q)
-            )(lambda point: B(point)(op.attr("z"))(qe))
+            Piper(self.test_class)
+            .do(lambda point: Piper(point).bind(op.attr("x")).bind(q))
+            .do(lambda point: Piper(point).bind(op.attr("y")).bind(q))
+            .do(lambda point: Piper(point).bind(op.attr("z")).bind(qe))
         )
 
     def test_item(self) -> None:
         (
-            B(self.test_class)(lambda point: point._asdict()).do(
-                lambda mapping: B(mapping)(op.item("x"))(q)
-            )(lambda mapping: B(mapping)(op.item("y"))(q))(
-                lambda mapping: B(mapping)(op.item("z"))(qe)
-            )
+            Piper(self.test_class)
+            .bind(lambda point: point._asdict())
+            .do(lambda mapping: Piper(mapping).bind(op.item("x")).bind(q))
+            .do(lambda mapping: Piper(mapping).bind(op.item("y")).bind(q))
+            .do(lambda mapping: Piper(mapping).bind(op.item("z")).bind(qe))
         )
 
     def test_mapx(self) -> None:
         (
-            B(tuple(self.test_class._asdict().values()))(op.map_over(lambda x: x + 1))(
-                op.map_over(lambda x: x + 2)
-            )(op.map_over(str))(tuple)(lambda data: self.assertTupleEqual(data, ("8", "7")))
+            Piper(tuple(self.test_class._asdict().values()))
+            .bind(op.map_over(lambda x: x + 1))
+            .bind(op.map_over(lambda x: x + 2))
+            .bind(op.map_over(str))
+            .bind(tuple)
+            .bind(lambda data: self.assertTupleEqual(data, ("8", "7")))
         )
 
     def test_filterx(self) -> None:
         (
-            B(tuple(self.test_class._asdict().values()))(
-                op.where(lambda x: x % 2 == 0)
-            )(tuple)(op.item(0))(q)(lambda res: self.assertEqual(4, res))
+            Piper(tuple(self.test_class._asdict().values()))
+            .bind(op.where(lambda x: x % 2 == 0))
+            .bind(tuple)
+            .bind(op.item(0))
+            .bind(q)
+            .bind(lambda res: self.assertEqual(4, res))
         )
 
     def test_reducex(self) -> None:
         (
-            B(tuple(self.test_class._asdict().values()))(op.fold(add))(int)(
-                lambda x: self.assertEqual(x, 9)
-            )
+            Piper(tuple(self.test_class._asdict().values()))
+            .bind(op.fold(add))
+            .bind(int)
+            .bind(lambda x: self.assertEqual(x, 9))
         )

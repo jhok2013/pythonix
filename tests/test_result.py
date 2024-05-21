@@ -1,7 +1,7 @@
 from unittest import TestCase
 from pythonix.prelude import *
 from typing import Callable
-from pythonix.internals.res import safe, safe
+from pythonix.internals.res import safe
 
 
 class TestOk(TestCase):
@@ -91,11 +91,11 @@ class TestDecorators(TestCase):
     def test_safe(self) -> None:
         op: Callable[[str], str] = lambda x: x
         proto_op = safe(TypeError, AttributeError)(op)
-        (pipe.Bind("hello")(proto_op)(res.q)(lambda s: self.assertEqual(s, "hello")))
+        (Piper("hello").bind(proto_op).bind(res.q).bind(lambda s: self.assertEqual(s, "hello")))
 
     def test_safe_fail(self) -> None:
         @safe(TypeError)
         def will_throw_type_error(_):
             raise TypeError("Failed successfully")
 
-        (pipe.Bind(None)(will_throw_type_error)(res.qe)(self.assertIsNotNone))
+        (Piper(None).bind(will_throw_type_error).bind(res.qe).bind(self.assertIsNotNone))
