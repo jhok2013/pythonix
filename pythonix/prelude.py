@@ -48,6 +48,6 @@ import pythonix.mdeq as mdeq
 from pythonix.grammar import P
 from pythonix.fn import fn
 
-from pythonix.res import Ok, Err, Nil, q, Res, qe
+from pythonix.res import Ok, Err, Nil, q, Res, qe, ok, err, Opt
 from pythonix.pipe import Bind, Do
 from pythonix.pipe import Bind as B, Do as D
