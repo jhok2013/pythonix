@@ -5,6 +5,7 @@ TODO
 * deprecate pipe
 * update trail docs
 * update tup docs
+* update op docs
 * update prove docs
 * add req as an optional feature with dependencies
 * test req
