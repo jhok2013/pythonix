@@ -34,15 +34,15 @@ class TestOp(TestCase):
 
     def test_mapx(self) -> None:
         (
-            B(tuple(self.test_class._asdict().values()))(op.mapx(lambda x: x + 1))(
-                op.mapx(lambda x: x + 2)
-            )(op.mapx(str))(tuple)(lambda data: self.assertTupleEqual(data, ("8", "7")))
+            B(tuple(self.test_class._asdict().values()))(op.map_over(lambda x: x + 1))(
+                op.map_over(lambda x: x + 2)
+            )(op.map_over(str))(tuple)(lambda data: self.assertTupleEqual(data, ("8", "7")))
         )
 
     def test_filterx(self) -> None:
         (
             B(tuple(self.test_class._asdict().values()))(
-                op.filterx(lambda x: x % 2 == 0)
+                op.where(lambda x: x % 2 == 0)
             )(tuple)(op.item(0))(q)(lambda res: self.assertEqual(4, res))
         )
 

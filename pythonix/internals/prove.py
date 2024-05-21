@@ -1,52 +1,59 @@
-"""Partialized functions for safe and simple assertions
+"""Basic curried functions for assertions and comparisons
 
 This module provides ways to perform common assertion patterns like
 equals, type tests, and testing for the presence of elements in data.
+
+Examples: ::
+
+    >>> val: int = 10
+    >>> is_even = lambda x: x % 2 == 0
+    >>> _, err = that(is_even)(val)
+    >>> err is None
+    True
 
 """
 from typing import Iterable, TypeVar, Callable
 from pythonix.internals.curry import two
 from pythonix.internals.res import safe
 
-Val = TypeVar("Val")
-NewVal = TypeVar("NewVal")
+T = TypeVar("T")
+U = TypeVar("U")
 
 
 @two
 @safe(AssertionError)
-def that(predicate: Callable[[Val], bool], val: Val) -> None:
+def that(predicate: Callable[[T], bool], val: T) -> None:
     """Assert that the provided function is true if given the value.
 
     Note:
-        This is useful with a `Do` pipe to check that values match what you expect without
-    changing the original value.
+        This is useful with a `Do` pipe to check that values match what
+        you expect without changing the original value.
 
-    Example:
-        ```python
-        val: int = 10
-        is_even = lambda x: x % 2 == 0
-        passed_inspection = prove.that(is_even)(val)
-        res.unwrap(passed_inspection)
+    Example: ::
+        
+        >>> val: int = 10
+        >>> is_even = lambda x: x % 2 == 0
+        >>> _, err = that(is_even)(val)
+        >>> err is None
+        True
 
-        # Bind shorthand
-        Bind(10)(prove.that(is_even))(q)
-        ```
     """
     assert predicate(val) == True
 
 
 @two
 @safe(AssertionError)
-def equals(left: NewVal, right: Val) -> None:
+def equals(left: U, right: T) -> None:
     """Assert that two values are equal.
 
-    Example:
-        ```python
-        expected: int = 10
-        actual: int = 10
-        comparison_result: Res[None, AssertionError] = prove.equals(expected)(actual)
-        res.unwrap(comparison_result)
-        ```
+    Example: ::
+
+        >>> expected: int = 10
+        >>> actual: int = 10
+        >>> _, err = equals(expected)(actual)
+        >>> err is None
+        True
+
     """
     assert left == right
 
@@ -55,28 +62,44 @@ def equals(left: NewVal, right: Val) -> None:
 def is_true(val: bool) -> None:
     """Assert that the provided value is `True`
 
-    Example:
-        ```python
-        true_value: bool = True
-        comparison_result
-        ```
+    Example: ::
+
+        >>> true_value: bool = True
+        >>> _, err = is_true(true_value)
+        >>> err is None
+        True
+
     """
     assert val == True
 
 
 @two
 @safe(AssertionError)
-def is_an(expected: type[Val], actual: Val) -> None:
-    """
-    Assert that the value is an instance of the expected type
+def is_an(expected: type[T], actual: T) -> None:
+    """Assert that the value is an instance of the expected type
+
+    Example: ::
+
+        >>> x: int = 10
+        >>> _, err = is_an(int)(x)
+        >>> err is None
+        True
+
     """
     assert isinstance(actual, expected)
 
 
 @two
 @safe(AssertionError)
-def contains(find: Val, iterable: Iterable[Val]) -> None:
-    """
-    Assert that the value is in the provided iterable
+def contains(find: T, iterable: Iterable[T]) -> None:
+    """Assert that the value is in the provided iterable
+
+    Example: ::
+
+        >>> data = [1, 2, 3]
+        >>> _, err = contains(1)(data)
+        >>> err is None
+        True
+
     """
     assert find in iterable

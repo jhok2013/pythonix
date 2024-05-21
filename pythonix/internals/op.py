@@ -1,60 +1,31 @@
-"""
-Functions used to operate over data structures.
+"""Functions used to operate over data structures.
 
 Comparable to the filter, map, reduce, getitem, getattr, setitem, and setattr functions.
-Can be used easily with the Bind, Pipe, and Do wrapper types. All functions are as
+Can be used easily with the Piper, and PipeApplyInfix, a.k.a P. All functions are as
 error proof as possible.
 
 Examples:
-    List:
-        ```python
-        from pythonix.prelude import *
-        from operator import add
 
-        (
-            Bind([1, 2, 3, 4])
-            (op.item(0))(q)
-            (op.filterx(lambda x: x % 2 == 0))
-            (op.mapx(lambda x: x + 1))
-            (list)
-            (op.fold(add))
-            (prove.equals(8))(q)
-        )
-        ```
-    Dict:
-        ```python
-        from pythonix.prelude import *
+    Mapping and Filtering: ::
 
-        (
-            Bind({'hello': 'world'})
-            (op.item(1))(q)
-            (op.item('hello'))(q)
-            (prove.equals('world))(q)
-        )
-        ```
+        >>> from operator import add
+        >>> data = [1, 2, 3, 4]
+        >>> is_even = lambda x: x % 2 == 0
+        >>> add_one = lambda x : x + 1
+        >>> mapped = map_over(add_one)(data)
+        >>> where_even = where(is_even)(mapped)
+        >>> total = fold(add)(where_even)
+        >>> total
+        6
 
-    Object:
-        ```python
-        from pythonix.prelude import *
+    Getting and Assigning: ::
 
-        (
-            Bind(object.__new__(object))
-            (op.item(2))(q)
-            (op.assign('foo')('bar'))(q)
-            (op.attr('foo'))(q)
-            (prove.equals('bar'))(q)
-        )
-        ```
-
-    Arg Application:
-    ```python
-        (
-            (lambda x: x + 1)
-            |P| op.arg(10)
-            |P| prove.equals(11)
-            |P| q
-        )
-    ```
+        >>> data = [1, 2, 0]
+        >>> data, err = assign(2)(3)(data)
+        >>> val, err = item(2)(data)
+        >>> val
+        3
+    
 """
 from typing import (
     Callable,
@@ -70,8 +41,8 @@ from typing import (
     Mapping,
 )
 from functools import reduce
-from copy import deepcopy
 from pythonix.internals.res import null_and_error_safe, safe, Res
+from pythonix.internals.curry import two
 from operator import setitem
 
 
@@ -82,7 +53,8 @@ O = TypeVar("O", bound="object")
 K = TypeVar("K", str, int, float, tuple, slice)
 
 
-def filterx(using: Callable[[T], bool]) -> Callable[[Iterable[T]], Iterator[T]]:
+@two
+def where(using: Callable[[T], bool], iterable: Iterable[T]) -> Iterator[T]:
     """Filter over an `Iterable` with a function.
 
     Function takes each of its elements and returns a True or False.
@@ -92,94 +64,70 @@ def filterx(using: Callable[[T], bool]) -> Callable[[Iterable[T]], Iterator[T]]:
         Returns a lazy iterator that must be collected.
 
     Args:
-        using ((T) -> bool): Function that takes a value *T* and returns True or False
+        *using* ((T) -> bool): Function that takes a value *T* and returns True or False
         iterable (Iterable[T]): List, tuple, or other iterable
 
     Returns:
-        iterator (Iterator[T]): Lazy iterator of the same type as the iterable, but with only the elements
-        that evaluated to True
+        *iterator* (Iterator[T]): Lazy iterator of the same type as the iterable, but with
+        only the elements that evaluated to True
 
-    Example:
-        ```python
-        from pythonix.prelude import *
+    Example: ::
 
-        (
-            (1, 2, 3, 4)
-            |P| op.filterx(lambda x: x % 2 == 0)
-            |P| tuple
-            |P| prove.that(lambda t: len(t) == 2)
-            |P| res.unwrap
-        )
-        ```
+        >>> data: list[str] = [1, 2, 3, 4]
+        >>> is_even = lambda x: x % 2 == 0
+        >>> list(where(is_even)(data))
+        [2, 4]
+
     """
-
-    def get_data(iterable: Iterable[T]) -> Iterator[T]:
-        return filter(using, iterable)
-
-    return get_data
+    return filter(using, iterable)
 
 
-def mapx(using: Callable[[T], U]) -> Callable[[Iterable[T]], Iterator[U]]:
-    """Run a function over an `Iterable` and return an `Iterator` the outputs.
+@two
+def map_over(using: Callable[[T], U], iterable: Iterable[T]) -> Iterable[T]:
+    """Run a function over an `Iterable`, return an Iterator of the results
 
     Note:
         Returns a lazy iterator that must be collected.
 
     Args:
-        using ((T) -> U): Function that will be applied over each element of the Iterable
-        iterable (Iterable[T]): List, tuple, or other iterable.
+        *using* ((T) -> U): Function that will be applied over each element of the Iterable
+        *iterable* (Iterable[T]): List, tuple, or other iterable.
 
     Returns:
-        iterator (Iterator[U]): Lazy iterator containing the result of *using* over the *iterable*
+        *iterator* (Iterator[U]): Lazy iterator containing the result of *using* over the *iterable*
 
-    Example:
-        ```python
-        from pythonix.prelude import *
+    Example: ::
 
-        (
-            B((1, 2, 3, 4))
-            (op.mapx(lambda x: x + 1))
-            (tuple)
-            (prove.contains(5))
-            (res.unwrap)
-        )
-        ```
+        >>> data = [1, 2, 3, 4]
+        >>> add_one = lambda x : x + 1
+        >>> list(map_over(add_one)(data))
+        [2, 3, 4, 5]
+
     """
-
-    def get_data(iterable: Iterable[T]) -> Iterator[U]:
-        return map(using, iterable)
-
-    return get_data
+    return map(using, iterable)
 
 
-def fold(using: Callable[[T, S], U]) -> Callable[[Iterable[T | S]], U]:
-    """Apply a function to accumulated pairs of elements in an iterable to a single final value
+@two
+def fold(using: Callable[[T, S], U], iterable: Iterable[T | S]) -> U:
+    """Accumulating pairs of elements to a final value recursively
 
     Args:
-        using ((T, S) -> U): Function that takes two arguments and returns a single element of the same type
-        iterable (Iterable[T | S]): List, tuple, or other sequence of the same type
+        *using* ((T, S) -> U): Function that takes two arguments and returns a single element of the same type
+        *iterable* (Iterable[T | S]): List, tuple, or other sequence of the same type
 
     Returns:
-        _ (U): Accumulated final value
+        *output* (U): Accumulated final value
 
-    Example:
-        ```python
-        from pythonix.prelude import *
-        from operator import add
+    Example: ::
 
-        (
-            (1, 2, 3, 4)
-            |P| op.fold(add)
-            |P| prove.equals(10)
-            |P| res.unwrap
-        )
-        ```
+        >>> data = [1, 2, 3, 4]
+        >>> add = lambda x, y: x + y
+        >>> fold(add)(data)
+        10
+    
     """
 
-    def get_data(iterable: Iterable[T | S]) -> U:
-        return reduce(using, iterable)
-
-    return get_data
+    return reduce(using, iterable)
 
 
 def attr(name: str, type_hint: type[U] = Any) -> Callable[[T], U]:
@@ -194,20 +142,18 @@ def attr(name: str, type_hint: type[U] = Any) -> Callable[[T], U]:
     Returns:
         opt (Res[U, Nil]): Result type containing the desired value if Ok, or Nil if Err
 
-    Example:
-        ```python
-        from pythonix.prelude import *
-        from collections import namedtuple
+    Example: ::
 
-        Point = namedtuple('Point', ('x', 'y'))
-        (
-            B(Point(5, 4))
-            (op.attr('x', int))
-            (res.unwrap)
-            (prove.equals(5))
-            (res.unwrap)
-        )
-        ```
+        >>> from collections import namedtuple
+        >>> Point = namedtuple('Point', ('x', 'y'))
+        >>> P = Point(10, 10)
+        >>> val, nil = attr('x')(P)
+        >>> val
+        10
+        >>> val, nil = attr('z')(P)
+        >>> nil
+        Nil("'Point' object has no attribute 'z'")
+
     """
 
     @null_and_error_safe(AttributeError)
@@ -218,44 +164,41 @@ def attr(name: str, type_hint: type[U] = Any) -> Callable[[T], U]:
 
 
 def item(index: SupportsIndex | K):
-    """Used to safely retrieve items from sequences and mappings in a functional way.
+    """Safely retrieve items from data structures
 
     Note:
         The second arguments are overloaded. Different data types will result in different
         return types.
 
     Args:
-        index (SupportsIndex | K): Any value that can be used for indexing or hashing for mappings or sequences
-        mapping (Mapping[K, T], Variant): A key value mapping
-        sequence (Sequence[T], Variant): A sequence with values
-        iterable (Iterable[T], Variant): An iterable that does not inherit from Mapping or Sequence
+        *index* (SupportsIndex | K): Any value that can be used for indexing or hashing for mappings or sequences
+        *iterable* (Mapping[K, T], Variant): A key value mapping
+        *iterable* (Sequence[T], Variant): A sequence with values
+        *iterable* (Iterable[T], Variant): An iterable that does not inherit from Mapping or Sequence
 
     Returns:
-        opt (Res[U, Nil]): Result type containing either the expected value if Ok, or a Nil if Err
+        *opt* (Res[U, Nil]): Result type containing either the expected value if Ok, or a Nil if Err
 
-    Example
-        ```python
-        from pythonix.prelude import *
+    Example: ::
 
-        (
-            {'hello': [1, 2, 3]}
-            |P| op.item('hello')
-            |P| res.unwrap
-            |P| op.item(0)
-            |P| res.unwrap
-        )
+        >>> data = {'hello': [1, 2, 3]}
+        >>> row, nil = item('hello')(data)
+        >>> row
+        [1, 2, 3]
+        >>> elem, nil = item(0)(row)
+        >>> elem
+        1
 
-        ```
     """
 
     @null_and_error_safe(IndexError, KeyError)
     @overload
-    def inner(mapping: Mapping[K, T]) -> T:
+    def inner(iterable: Mapping[K, T]) -> T:
         ...
 
     @null_and_error_safe(IndexError)
     @overload
-    def inner(sequence: Sequence[T]) -> T:
+    def inner(iterable: Sequence[T]) -> T:
         ...
 
     @null_and_error_safe(IndexError)
@@ -270,99 +213,80 @@ def item(index: SupportsIndex | K):
     return inner
 
 
-def arg(val: T) -> Callable[[Callable[[T], U]], U]:
+@two
+def arg(val: T, op: Callable[[T], U]) -> U:
     """Applies a single argument to a function and returns its result.
 
-    Useful for piping an argument into a function via `Bind` or `Do`
+    Useful for piping an argument into a function.
 
     Args:
-        val (T): The value to be applied to the single variable function
-        op ((T) -> U): The function that will apply T and output U
+        *val* (T): The value to be applied to the single variable function
+        *op* ((T) -> U): The function that will apply T and output U
 
     Returns:
-        output (U): The output of the provided function
+        *output* (U): The output of the provided function
 
-    Example:
-        ```python
-        from pythonix.prelude import *
+    Example: ::
 
-        (
-            B(lambda x: x + 1)
-            (op.arg(10))
-            (prove.equals(11))
-            (res.unwrap)
-        )
-        ```
+        >>> add_ten = lambda x: x + 10
+        >>> arg(10)(add_ten)
+        20
+        
     """
-
-    def get_op(op: Callable[[T], U]) -> U:
-        return op(val)
-
-    return get_op
+    
+    return op(val)
 
 
 def assign(key: K):
-    """Assign a value to a given index or name on a list, dict or mutable object.
+    """Assign a value to an index or attr on a list, dict or mutable object.
+
     Has full type support for each of the three different types.
 
     Note:
         Returns a copy of the updated object wrapped in a `Res` that reflects potential errors.
 
     Args:
-        key (K): Any value that can be used as a key for a data structure
-        val (U): The value to be assigned to the mutable data structure or object
-        sequence (MutableSequence[T], variant): First of three options. A list or list like object
-        mapping (MutableMapping[K, V], variant): Second of three options. A dict or dict like object
-        obj (O, variant): Third of three options. Any object that allows assigning attributes
+        *key* (K): Any value that can be used as a key for a data structure
+        *val* (U): The value to be assigned to the mutable data structure or object
+        *sequence* (MutableSequence[T], variant): First of three options. A list or list like object
+        *mapping* (MutableMapping[K, V], variant): Second of three options. A dict or dict like object
+        *obj* (O, variant): Third of three options. Any object that allows assigning attributes
 
     Returns:
         sequence_copy (Res[MutableSequence[T | U], IndexError]): A copy of the sequence with the additional value wrapped in a result
         mapping_copy (Res[MutableMapping[K, V], IndexError | KeyError]): A copy of the mapping with the additional value wrapped in a result
         obj_copy (Res[O, AttributeError]): A copy of the original object with the attribute assigned, wrapped in a result
 
-    Example:
-        ```python
-        from pythonix.prelude import *
+    Example: ::
 
-        # Assign to a dictionary
-        (
-            {'foo': 1}
-            |P| op.assign('bar')('hello')
-            |P| res.unwrap
-            |P| prove.that(lambda d: d['bar'] == 'hello')
-            |P| res.unwrap
-        )
+        >>> mapping = {'hello': 'world'}
+        >>> val, err = assign('hola')('mundo')(mapping)
+        >>> val
+        {'hello': 'world', 'hola': 'mundo'}
+        >>> sequence = [1, 2, 0]
+        >>> val, err = assign(2)(3)(sequence)
+        >>> val
+        [1, 2, 3]
+        >>> class Obj:
+        ...     def __init__(self, foo = None):
+        ...         self.foo = foo
+        ...
+        >>> obj, err = assign('foo')('bar')(Obj())
+        >>> obj.foo
+        'bar'
 
-        # Assign to a list
-        (
-            B([1, 2, 3])
-            (op.assign(0)(4))(q)
-            (op.item(0))(q)
-            (prove.equals(4))(q)
-        )
-
-        # Assign to an object
-        (
-            object.__new__(object)
-            |P| op.assign('foo')('bar')
-            |P| q
-            |P| op.attr('foo')
-            |P| q
-        )
-
-        ```
     """
 
     def get_val(val: U):
         @overload
         def get_obj(
-            sequence: MutableSequence[T],
+            obj: MutableSequence[T],
         ) -> Res[MutableSequence[T | U], IndexError]:
             ...
 
         @overload
         def get_obj(
-            mapping: MutableMapping[K, T]
+            obj: MutableMapping[K, T]
         ) -> Res[MutableMapping[K, T | U], IndexError | KeyError]:
             ...
 
@@ -374,14 +298,13 @@ def assign(key: K):
         def get_obj(
             obj: MutableSequence[T] | MutableMapping[K, T] | O
         ) -> MutableSequence[T | U] | MutableMapping[K, T | U] | O:
-            copy = deepcopy(obj)
             if not isinstance(obj, MutableMapping) and not isinstance(
                 obj, MutableSequence
             ):
-                setattr(copy, key, val)
-                return copy
-            setitem(copy, key, val)
-            return copy
+                setattr(obj, key, val)
+                return obj
+            setitem(obj, key, val)
+            return obj
 
         return get_obj
 

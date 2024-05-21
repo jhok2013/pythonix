@@ -1,5 +1,5 @@
 from typing import NamedTuple, ParamSpec, Callable, Tuple, TypeVar
-from pythonix.internals.op import mapx
+from pythonix.internals.op import map_over
 from pythonix.internals.pipe import Bind
 from pythonix.internals.res import Res, safe, map as rmap
 from pythonix.internals.pair import Pair, Pairs, map
@@ -128,8 +128,8 @@ def get(url: str):
             """
             return Get(
                 url,
-                tuple(mapx(set_value_to_bytes)(headers)),
-                tuple(mapx(set_value_to_bytes)(params)),
+                tuple(map_over(set_value_to_bytes)(headers)),
+                tuple(map_over(set_value_to_bytes)(params)),
                 tuple(),
             )
 
@@ -166,9 +166,9 @@ def post(url: str):
                 """
                 return Post(
                     url,
-                    tuple(mapx(set_value_to_bytes)(headers)),
-                    tuple(mapx(set_value_to_bytes)(params)),
-                    tuple(mapx(set_value_to_bytes)(data)),
+                    tuple(map_over(set_value_to_bytes)(headers)),
+                    tuple(map_over(set_value_to_bytes)(params)),
+                    tuple(map_over(set_value_to_bytes)(data)),
                 )
 
             return get_data
@@ -206,9 +206,9 @@ def put(url: str):
                 """
                 return Put(
                     url,
-                    tuple(mapx(set_value_to_bytes)(headers)),
-                    tuple(mapx(set_value_to_bytes)(params)),
-                    tuple(mapx(set_value_to_bytes)(data)),
+                    tuple(map_over(set_value_to_bytes)(headers)),
+                    tuple(map_over(set_value_to_bytes)(params)),
+                    tuple(map_over(set_value_to_bytes)(data)),
                 )
 
             return get_data
@@ -234,7 +234,7 @@ def delete(url: str):
         )
         ```
         """
-        return Post(url, tuple(mapx(set_value_to_bytes)(headers)), tuple(), tuple())
+        return Post(url, tuple(map_over(set_value_to_bytes)(headers)), tuple(), tuple())
 
     return get_headers
 
