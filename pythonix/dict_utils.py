@@ -1,10 +1,19 @@
-"""Utility functions for common operations on dictionaries like mapping over keys or values.
+"""Additional functions to supplement working with dicts
 
-The functions allow for retrieval and insertion of data on dictionaries in a type safe and
-unsurprising way. Retrieving value by key return results of *Ok[T] | Err[Nil]*. They can then
-be handled using the res submodule or through pattern matching or unpacking. These functions
-are curried with the subject as the last step, which makes them compliant for use with Bind, Do,
-and Pipe.
+Includes functions for getting, putting, and mapping over dictionaries.
+
+Examples: ::
+        
+    >>> data: dict[str, int] = {'First': 1, 'Second': 2}
+    >>> upper_dict: dict[str, int] = map_keys(str.upper)(data)
+    >>> upper_keys: tuple[str, ...] = tuple(upper_dict.keys())
+    >>> upper_keys == ('FIRST', 'SECOND')
+    True
+    >>> data: dict[str, int] = {'First': 1, 'Second': 2}
+    >>> str_values_dict: dict[str, str] = map_values(str)(data)
+    >>> tuple(str_values_dict.values())
+    ('1', '2')
+
 """
 from pythonix.internals.dict_utils import (
     filter_keys,

@@ -1,3 +1,27 @@
+"""Function decorators for automatic currying of declared functions
+
+Examples: ::
+
+    >>> @two
+    ... def add(x: int, y: int) -> int:
+    ...     return x + y
+    ...
+    >>> add(10)(10)
+    20
+    >>> add_10 = add(10)
+    >>> add_10(20)
+    30
+
+You can even use it in place to modify functions.
+
+    >>> def join(delimiter: str, iterable: list[str]) -> str:
+    ...     return delimiter.join(iterable)
+    ...
+    >>> join_curry = two(join)
+    >>> join_curry(', ')(['hello', 'world'])
+    'hello, world'
+
+"""
 from typing import TypeVar, Callable
 from functools import wraps, WRAPPER_ASSIGNMENTS
 
@@ -18,7 +42,42 @@ updated_assignments = WRAPPER_ASSIGNMENTS
 # updated_assignments = tuple(assignments)
 
 
+def to_end_two(func: Callable[[T1, T2], U]) -> Callable[[T2, T1], U]:
+    """Moves the first arg of a two function argument to be the last instead
+    
+    Examples: ::
+
+        >>> @to_end_two
+        ... def join(iterable: list[str], delimiter: str) -> str:
+        ...     return delimiter.join(iterable)
+        ...
+        >>> join(', ', ['hello', 'world'])
+        'hello, world'
+    
+    """
+    @wraps(func)
+    def wrapped(t2: T2, t1: T1) -> U:
+        return func(t1, t2)
+    
+    return wrapped
+
+
 def two(func: Callable[[T1, T2], U]) -> Callable[[T1], Callable[[T2], U]]:
+    """Turns a function of two args to a curried one with the same return type
+
+    Example: ::
+
+        >>> @two
+        ... def add(x: int, y: int) -> int:
+        ...     return x + y
+        ...
+        >>> add(10)(10)
+        20
+        >>> add_10 = add(10)
+        >>> add_10(20)
+        30
+
+    """
     @wraps(func, assigned=updated_assignments)
     def in1(t1: T1) -> Callable[[T2], U]:
         def in2(t2: T2) -> U:
@@ -32,6 +91,7 @@ def two(func: Callable[[T1, T2], U]) -> Callable[[T1], Callable[[T2], U]]:
 def three(
     func: Callable[[T1, T2, T3], U]
 ) -> Callable[[T1], Callable[[T2], Callable[[T3], U]]]:
+    """Same as ``two``, but handles three arguments"""
     @wraps(func, assigned=updated_assignments)
     def in1(t1: T1) -> Callable[[T2], Callable[[T3], U]]:
         def in2(t2: T2) -> Callable[[T3], U]:
@@ -48,6 +108,7 @@ def three(
 def four(
     func: Callable[[T1, T2, T3, T4], U]
 ) -> Callable[[T1], Callable[[T2], Callable[[T3], Callable[[T4], U]]]]:
+    """Same as ``two``, but handles four arguments"""
     @wraps(four)
     def in1(t1: T1) -> Callable[[T2], Callable[[T3], Callable[[T4], U]]]:
         def in2(t2: T2) -> Callable[[T3], Callable[[T4], U]]:
@@ -67,6 +128,7 @@ def four(
 def five(
     func: Callable[[T1, T2, T3, T4, T5], U]
 ) -> Callable[[T1], Callable[[T2], Callable[[T3], Callable[[T4], Callable[[T5], U]]]]]:
+    """Same as ``two``, but handles five arguments"""
     @wraps(func, assigned=updated_assignments)
     def in1(
         t1: T1,
@@ -94,6 +156,7 @@ def six(
     [T1],
     Callable[[T2], Callable[[T3], Callable[[T4], Callable[[T5], Callable[[T6], U]]]]],
 ]:
+    """Same as ``two``, but handles six arguments"""
     @wraps(func, assigned=updated_assignments)
     def in1(
         t1: T1,
@@ -133,6 +196,7 @@ def seven(
         ],
     ],
 ]:
+    """Same as ``two``, but handles seven arguments"""
     @wraps(func, assigned=updated_assignments)
     def in1(
         t1: T1,
@@ -185,6 +249,7 @@ def eight(
         ],
     ],
 ]:
+    """Same as ``two``, but handles eight arguments"""
     @wraps(func, assigned=updated_assignments)
     def in1(
         t1: T1,
@@ -256,6 +321,7 @@ def nine(
         ],
     ],
 ]:
+    """Same as ``two``, but handles nine arguments"""
     @wraps(func, assigned=updated_assignments)
     def in1(
         t1: T1,

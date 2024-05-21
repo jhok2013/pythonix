@@ -15,11 +15,6 @@ Examples: ::
     >>> add(10, 10)
     20
     
-    This makes preserving type info when using pipe applicators much easier
-
-    >>> from pythonix.prelude import *
-    >>> 10 |P| fn(int, int)(lambda x: x + 1)
-    11
 """
 from typing import TypeVar, Callable, overload
 from functools import wraps

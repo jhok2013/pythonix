@@ -1,10 +1,19 @@
-"""Utility functions for common operations on dictionaries like mapping over keys or values.
+"""Additional functions to supplement working with dicts
 
-The functions allow for retrieval and insertion of data on dictionaries in a type safe and
-unsurprising way. Retrieving value by key return results of *Ok[T] | Err[Nil]*. They can then
-be handled using the res submodule or through pattern matching or unpacking. These functions
-are curried with the subject as the last step, which makes them compliant for use with Bind, Do,
-and Pipe.
+Includes functions for getting, putting, and mapping over dictionaries.
+
+Examples: ::
+        
+    >>> data: dict[str, int] = {'First': 1, 'Second': 2}
+    >>> upper_dict: dict[str, int] = map_keys(str.upper)(data)
+    >>> upper_keys: tuple[str, ...] = tuple(upper_dict.keys())
+    >>> upper_keys == ('FIRST', 'SECOND')
+    True
+    >>> data: dict[str, int] = {'First': 1, 'Second': 2}
+    >>> str_values_dict: dict[str, str] = map_values(str)(data)
+    >>> tuple(str_values_dict.values())
+    ('1', '2')
+
 """
 from typing import TypeVar, Dict, Callable, Mapping, Tuple
 from pythonix.internals.op import item
@@ -16,16 +25,16 @@ L = TypeVar("L", str, int, float, tuple)
 
 
 def map_items(using: Callable[[K, V], Tuple[L, W]]):
-    """Applies the provided function against the key-value pairs in a dictionary, returning
-    a new dictionary from the results.
+    """Applies *using* with dict items to return a new dict with the results
 
-    Example:
-        ```python
-        func = lambda k, v: (k, v + ' boy')
-        d = {'hello': 'joe'}
-        d2 = dict_utils.map_items(foo)(d)
-        assert d2['hello'] == 'joe boy'
-        ```
+    Example: ::
+
+        >>> func = lambda k, v: (k, v + ' boy')
+        >>> d = {'hello': 'joe'}
+        >>> d2 = map_items(func)(d)
+        >>> d2['hello']
+        'joe boy'
+
     """
 
     def get_dict(dict_obj: Dict[K, V]) -> Dict[L, W]:
@@ -35,16 +44,16 @@ def map_items(using: Callable[[K, V], Tuple[L, W]]):
 
 
 def map_keys(using: Callable[[K], L]):
-    """Runs the provided function over each key in a dictionary, returning a new
-    dictionary with the updated keys and the same values
+    """Applies *using* over dict keys to return a new dict with the results
 
-    Example:
-        ```python
-        data: dict[str, int] = {'First': 1, 'Second': 2}
-        upper_dict: dict[str, int] = dict_utils.map_keys(str.upper)(data)
-        upper_keys: tuple[str, ...] = tuple(upper_dict.keys())
-        assert upper_keys == ('FIRST', 'SECOND')
-        ```
+    Example: ::
+        
+        >>> data: dict[str, int] = {'First': 1, 'Second': 2}
+        >>> upper_dict: dict[str, int] = map_keys(str.upper)(data)
+        >>> upper_keys: tuple[str, ...] = tuple(upper_dict.keys())
+        >>> upper_keys == ('FIRST', 'SECOND')
+        True
+
     """
 
     def get_dict(dict_obj: Dict[K, V]) -> Dict[L, V]:
@@ -54,18 +63,15 @@ def map_keys(using: Callable[[K], L]):
 
 
 def map_values(using: Callable[[V], W]):
-    """Runs the provided function over each value in a `dict`, returning a new
-    `dict` with the updated values and the same keys
+    """Applies *using* over dict values to return a new dict with the results
 
-    Example:
-        ```python
-        import pythonix.dict_utils as dict_utils
+    Example: ::
 
-        data: dict[str, int] = {'First': 1, 'Second': 2}
-        str_values_dict: dict[str, str] = dict_utils.map_values(str)
-        values: tuple[str, ...] = tuple(str_values_dict.values())
-        assert values == ('1', '2')
-        ```
+        >>> data: dict[str, int] = {'First': 1, 'Second': 2}
+        >>> str_values_dict: dict[str, str] = map_values(str)(data)
+        >>> tuple(str_values_dict.values())
+        ('1', '2')
+
     """
 
     def get_dict(dict_obj: Dict[K, V]) -> Dict[K, W]:
@@ -75,17 +81,15 @@ def map_values(using: Callable[[V], W]):
 
 
 def filter_keys(predicate: Callable[[K], bool]):
-    """Runs the provided filter function over the keys in a `dict`, returning a new `dict`
-    with only the `keys` that evaluated to `True`
+    """Applies *predicate* over keys, keeping only those that evaluate to True
 
-    Example:
-        ```python
-        import pythonix.dict_utils as dict_utils
+    Example : ::
 
-        data: dict[str, int] = {'First': 1, 'Second': 2}
-        only_first: dict[str, int] = dict_utils.filter_keys(lambda key: key == 'First')
-        assert tuple(only_first.items()) == ('First', 1)
-        ```
+        >>> data: dict[str, int] = {'First': 1, 'Second': 2}
+        >>> only_first: dict[str, int] = filter_keys(lambda key: key == 'First')(data)
+        >>> tuple(only_first.values())
+        (1,)
+
     """
 
     def get_dict(dict_obj: Dict[K, V]) -> Dict[K, V]:
@@ -95,17 +99,15 @@ def filter_keys(predicate: Callable[[K], bool]):
 
 
 def filter_values(predicate: Callable[[V], bool]):
-    """Runs the provided filter function over the values in a `dict`, returning a new `dict`
-    with only the values that evaluated to `True`
+    """Applies *predicate* over values, keeping only those that evaluate to True
 
-    Example:
-        ```python
-        import pythonix.dict_utils as dict_utils
+    Example: ::
 
-        data: dict[str, int] = {'First': 1, 'Second': 2}
-        evens_only: dict[str, int] = dict_utils.filter_values(lambda v: v % 2 == 0)
-        assert tuple(evens_only.items()) == ('Second', 2)
-        ```
+        >>> data: dict[str, int] = {'First': 1, 'Second': 2}
+        >>> evens_only: dict[str, int] = filter_values(lambda v: v % 2 == 0)(data)
+        >>> tuple(*evens_only.items())
+        ('Second', 2)
+
     """
 
     def get_dict(dict_obj: Dict[K, V]) -> Dict[K, V]:
@@ -115,14 +117,15 @@ def filter_values(predicate: Callable[[V], bool]):
 
 
 def merge(new_dict: Dict[L, W]):
-    """Merges two dictionaries together, with values in the `old_dict` overrinding the values from the `new_dict`
+    """Merges two dictionaries together, overriding the first with the second
 
-    Example:
-        ```python
-        old: dict[str, int] = {'foo': 0}
-        new: dict[int, str] = {1: 'bar'}
-        merged: dict[str | int, str | int] = merge(new)(old)
-        ```
+    Example: ::
+        
+        >>> old: dict[str, int] = {'foo': 0}
+        >>> new: dict[int, str] = {1: 'bar'}
+        >>> merge(new)(old)
+        {'foo': 0, 1: 'bar'}
+
     """
 
     def get_old(old_dict: Dict[K, V]) -> Dict[K | L, V | W]:
@@ -134,11 +137,12 @@ def merge(new_dict: Dict[L, W]):
 def put(key: L):
     """Puts a new value into a `dict`.
 
-    Example:
-        ```python
-        data: dict[str, int] = {'hello': 0}
-        updated: dict[str, int] = put('joe')(1)(data)
-        ```
+    Example: ::
+
+        >>> data: dict[str, int] = {'hello': 0}
+        >>> put('joe')(1)(data)
+        {'joe': 1, 'hello': 0}
+
     """
 
     def get_val(
@@ -153,14 +157,16 @@ def put(key: L):
 
 
 def get(key: K):
-    """Retrieves a value from a mapping, returning `Nil` on error
+    """Gets value from dict as Ok[T], or Err[Nil] if not found
 
-    Example:
-        ```python
-        d = {'foo': 'bar'}
-        bar = get('foo')(d)
-        assert bar == 'bar'
-        ```
+    Example: ::
+
+        >>> d = {'foo': 'bar'}
+        >>> bar = get('foo')(d)
+        >>> val, err = bar
+        >>> val
+        'bar'
+
     """
 
     def get_data(mapping: Mapping[K, V]):

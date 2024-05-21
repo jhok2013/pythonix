@@ -44,7 +44,7 @@ import pythonix.tup as tup
 import pythonix.dict_utils as dict_utils
 import pythonix.grammar as grammar
 import pythonix.prove as prove
-import pythonix.mdeq as mdeq
+import pythonix.deq as deq
 from pythonix.grammar import P
 from pythonix.fn import fn
 
