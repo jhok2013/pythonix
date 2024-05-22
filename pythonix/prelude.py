@@ -2,11 +2,14 @@
 TODO
 ====
 
+* Check to see if switching res styles can make things better
+* mypy check the code, bring everything up to 100
 * update prelude docs
 * udpate readme to have a good tutorial
 * Create unit test suites for all funcs
 * Bring code coverage up to 100%
 """
+import pythonix
 import pythonix.res as res
 import pythonix.trail as trail
 import pythonix.op as op
@@ -20,4 +23,4 @@ import pythonix.deq as deq
 from pythonix.grammar import P, Piper
 from pythonix.fn import fn
 
-from pythonix.res import Ok, Err, Nil, q, Res, qe, ok, err, Opt
+from pythonix.res import Ok, Err, Nil, q, Res, qe, ok, err, Opt, unpack

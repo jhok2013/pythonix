@@ -21,8 +21,8 @@ Examples:
     Getting and Assigning: ::
 
         >>> data = [1, 2, 0]
-        >>> data, err = assign(2)(3)(data)
-        >>> val, err = item(2)(data)
+        >>> data, err = unpack(assign(2)(3)(data))
+        >>> val, err = unpack(item(2)(data))
         >>> val
         3
     
@@ -41,7 +41,7 @@ from typing import (
     Mapping,
 )
 from functools import reduce
-from pythonix.internals.res import null_and_error_safe, safe, Res, Opt
+from pythonix.internals.res import null_and_error_safe, safe, Res, Opt, unpack
 from pythonix.internals.curry import two
 from operator import setitem
 
@@ -147,10 +147,10 @@ def attr(name: str, type_hint: type[U] = Any) -> Callable[[T], U]:
         >>> from collections import namedtuple
         >>> Point = namedtuple('Point', ('x', 'y'))
         >>> P = Point(10, 10)
-        >>> val, nil = attr('x')(P)
+        >>> val, nil = unpack(attr('x')(P))
         >>> val
         10
-        >>> val, nil = attr('z')(P)
+        >>> val, nil = unpack(attr('z')(P))
         >>> nil
         Nil("'Point' object has no attribute 'z'")
 
@@ -182,10 +182,10 @@ def item(index: SupportsIndex | K):
     Example: ::
 
         >>> data = {'hello': [1, 2, 3]}
-        >>> row, nil = item('hello')(data)
+        >>> row, nil = unpack(item('hello')(data))
         >>> row
         [1, 2, 3]
-        >>> elem, nil = item(0)(row)
+        >>> elem, nil = unpack(item(0)(row))
         >>> elem
         1
 
@@ -254,18 +254,18 @@ def assign(key: K):
     Example: ::
 
         >>> mapping = {'hello': 'world'}
-        >>> val, err = assign('hola')('mundo')(mapping)
+        >>> val, err = unpack(assign('hola')('mundo')(mapping))
         >>> val
         {'hello': 'world', 'hola': 'mundo'}
         >>> sequence = [1, 2, 0]
-        >>> val, err = assign(2)(3)(sequence)
+        >>> val, err = unpack(assign(2)(3)(sequence))
         >>> val
         [1, 2, 3]
         >>> class Obj:
         ...     def __init__(self, foo = None):
         ...         self.foo = foo
         ...
-        >>> obj, err = assign('foo')('bar')(Obj())
+        >>> obj, err = unpack(assign('foo')('bar')(Obj()))
         >>> obj.foo
         'bar'
 

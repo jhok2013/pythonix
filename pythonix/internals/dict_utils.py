@@ -17,7 +17,7 @@ Examples: ::
 """
 from typing import TypeVar, Dict, Callable, Mapping, Tuple
 from pythonix.internals.op import item
-from pythonix.internals.res import Opt
+from pythonix.internals.res import Opt, unpack
 
 V = TypeVar("V")
 W = TypeVar("W")
@@ -164,7 +164,7 @@ def get(key: K):
 
         >>> d = {'foo': 'bar'}
         >>> bar = get('foo')(d)
-        >>> val, err = bar
+        >>> val, err = unpack(bar)
         >>> val
         'bar'
 

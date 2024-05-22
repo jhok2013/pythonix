@@ -5,19 +5,19 @@ Examples: ::
     >>> data = new(1, 2, 3)
     >>> data = push_right(4)(data)
     >>> data = extend_right(new(5, 6, 7))(data)
-    >>> i, nil = index(7)(data)
+    >>> i, nil = unpack(index(7)(data))
     >>> i
     6
     >>> count_occurrences(3)(data)
     1
-    >>> data, nil = remove(1)(data)
+    >>> data, nil = unpack(remove(1)(data))
     >>> data
     (1, 3, 4, 5, 6, 7)
 
 """
 from typing import Tuple, TypeVar
 from pythonix.internals.op import item
-from pythonix.internals.res import safe, null_and_error_safe, Opt
+from pythonix.internals.res import safe, null_and_error_safe, Opt, unpack
 from pythonix.internals.curry import two, three
 from enum import Enum
 
@@ -74,10 +74,10 @@ def get(index: IndexInt, tuples: Tuple[T, ...]) -> Opt[T]:
     Example: ::
 
         >>> data = new(1, 2, 3)
-        >>> val, nil = get(0)(data)
+        >>> val, nil = unpack(get(0)(data))
         >>> val
         1
-        >>> val, nil = get(3)(data)
+        >>> val, nil = unpack(get(3)(data))
         >>> nil
         Nil('tuple index out of range')
 
@@ -117,7 +117,7 @@ def index(element: T, tuples: Tuple[T, ...]) -> int:
     Example: ::
 
         >>> data = new(3, 2, 1)
-        >>> i, nil = index(3)(data)
+        >>> i, nil = unpack(index(3)(data))
         >>> i
         0
 
@@ -165,7 +165,7 @@ def remove(index: IndexInt, tuples: Tuple[T, ...]) -> Tuple[T, ...]:
     Examples: ::
 
         >>> data = new(1, 2, 3)
-        >>> val, err = remove(0)(data)
+        >>> val, err = unpack(remove(0)(data))
         >>> val
         (2, 3)
 

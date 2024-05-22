@@ -7,7 +7,7 @@ appends and pops.
 Examples: ::
 
     >>> deq = new(1, 2, 3)
-    >>> val, nil = get(0)(deq)
+    >>> val, nil = unpack(get(0)(deq))
     >>> val
     1
 
@@ -16,6 +16,7 @@ from collections import deque as deque
 from typing import Iterable, TypeVar
 from pythonix.internals.res import null_and_error_safe, safe, null_safe, Opt
 from pythonix.internals.curry import two, three
+from pythonix.internals.res import unpack
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -41,7 +42,7 @@ def append(element: U, deq: deque[T]) -> deque[T | U]:
     Example: ::
 
         >>> deq: deque[int] = append(4)(deque((1, 2, 3)))
-        >>> val, nil = pop(deq)
+        >>> val, nil = unpack(pop(deq))
         >>> val
         4
     
@@ -57,7 +58,7 @@ def appendleft(element: U, deq: deque[T]) -> deque[T | U]:
     Example: ::
 
         >>> deq: deque[int] = appendleft(4)(new(1, 2, 3))
-        >>> val, nil = popleft(deq)
+        >>> val, nil = unpack(popleft(deq))
         >>> val
         4
 
@@ -73,7 +74,7 @@ def clear(deq: deque[T]) -> deque[None]:
 
         >>> deq: deque[int] = new(1, 2, 3)
         >>> cleared = clear(deq)
-        >>> val, nil = pop(cleared)
+        >>> val, nil = unpack(pop(cleared))
         >>> nil
         Nil('pop from an empty deque')
     
@@ -193,10 +194,10 @@ def get(index: int | slice, deq: deque[T]) -> T:
     Examples: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
-        >>> val, nil = get(0)(deq)
+        >>> val, nil = unpack(get(0)(deq))
         >>> val
         1
-        >>> val, nil = get(4)(deq)
+        >>> val, nil = unpack(get(4)(deq))
         >>> nil
         Nil('deque index out of range')
     
@@ -211,7 +212,7 @@ def pop(deq: deque[T]) -> T:
     Examples: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
-        >>> val, nil = pop(deq)
+        >>> val, nil = unpack(pop(deq))
         >>> val
         3
         >>> deq
@@ -227,7 +228,7 @@ def popleft(deq: deque[T]) -> T:
     Examples: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
-        >>> val, nil = popleft(deq)
+        >>> val, nil = unpack(popleft(deq))
         >>> val
         1
         >>> deq
@@ -245,7 +246,7 @@ def remove(element: T, deq: deque[T]) -> deque[T]:
     Example: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
-        >>> deq, nil = remove(2)(deq)
+        >>> deq, nil = unpack(remove(2)(deq))
         >>> deq
         deque([1, 3])
     
@@ -296,7 +297,7 @@ def first(deq: deque[T]) -> Opt[T]:
     Example: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
-        >>> val, nil = first(deq)
+        >>> val, nil = unpack(first(deq))
         >>> val
         1
     
@@ -310,7 +311,7 @@ def last(deq: deque[T]) -> Opt[T]:
     Example: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
-        >>> val, nil = last(deq)
+        >>> val, nil = unpack(last(deq))
         >>> val
         3
     
@@ -325,7 +326,7 @@ def maxlen(deq: deque[T]) -> int:
     Example: ::
 
         >>> deq: deque[int] = new(1, 2, 3, maxlen=3)
-        >>> m, nil = maxlen(deq)
+        >>> m, nil = unpack(maxlen(deq))
         >>> m
         3
 

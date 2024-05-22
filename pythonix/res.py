@@ -45,6 +45,7 @@ from pythonix.internals.res import (
     map,
     map_err,
     map_or,
+    unpack,
     map_or_else,
     null_safe,
     ok,

@@ -7,14 +7,14 @@ Examples: ::
 
     >>> val: int = 10
     >>> is_even = lambda x: x % 2 == 0
-    >>> _, err = that(is_even)(val)
+    >>> _, err = unpack(that(is_even)(val))
     >>> err is None
     True
 
 """
 from typing import Iterable, TypeVar, Callable
 from pythonix.internals.curry import two
-from pythonix.internals.res import safe
+from pythonix.internals.res import safe, unpack
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -33,7 +33,7 @@ def that(predicate: Callable[[T], bool], val: T) -> None:
         
         >>> val: int = 10
         >>> is_even = lambda x: x % 2 == 0
-        >>> _, err = that(is_even)(val)
+        >>> _, err = unpack(that(is_even)(val))
         >>> err is None
         True
 
@@ -50,7 +50,7 @@ def equals(left: U, right: T) -> None:
 
         >>> expected: int = 10
         >>> actual: int = 10
-        >>> _, err = equals(expected)(actual)
+        >>> _, err = unpack(equals(expected)(actual))
         >>> err is None
         True
 
@@ -65,7 +65,7 @@ def is_true(val: bool) -> None:
     Example: ::
 
         >>> true_value: bool = True
-        >>> _, err = is_true(true_value)
+        >>> _, err = unpack(is_true(true_value))
         >>> err is None
         True
 
@@ -81,7 +81,7 @@ def is_an(expected: type[T], actual: T) -> None:
     Example: ::
 
         >>> x: int = 10
-        >>> _, err = is_an(int)(x)
+        >>> _, err = unpack(is_an(int)(x))
         >>> err is None
         True
 
@@ -97,7 +97,7 @@ def contains(find: T, iterable: Iterable[T]) -> None:
     Example: ::
 
         >>> data = [1, 2, 3]
-        >>> _, err = contains(1)(data)
+        >>> _, err = unpack(contains(1)(data))
         >>> err is None
         True
 

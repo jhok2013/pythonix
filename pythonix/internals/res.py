@@ -36,6 +36,7 @@ And much, much more. Everything has its own documentation so check it out.
 from __future__ import annotations
 from functools import wraps
 from typing import (
+    Tuple,
     TypeVar,
     Generic,
     NamedTuple,
@@ -43,7 +44,6 @@ from typing import (
     ParamSpec,
     Callable,
     TypeAlias,
-    Iterator,
 )
 
 P = ParamSpec("P")
@@ -68,7 +68,6 @@ class Nil(Exception):
     def __init__(self, message: str = "Did not expect None"):
         super().__init__(message)
 
-
 class Ok(Generic[T], NamedTuple):
     """Represents a successful outcome of a function that could have failed.
 
@@ -89,12 +88,7 @@ class Ok(Generic[T], NamedTuple):
         5
 
     """
-
     inner: T
-
-    def __iter__(self) -> Iterator[T | None]:
-        return iter((self.inner, None))
-
 
 class Err(Generic[E], NamedTuple):
     """Represents a successful outcome of a function that could have failed.
@@ -115,24 +109,33 @@ class Err(Generic[E], NamedTuple):
         'foo'
 
     """
-
     inner: E
 
-    def __iter__(self) -> Iterator[E | None]:
-        return iter((None, self.inner))
-
-
 Res: TypeAlias = Ok[T] | Err[E]
-"""Type alias for ``Ok[T]`` or ``Err[E]``. Useful for quickly annotating
+"""Convenient type alias for a value that could be Ok or Err"""
 
-Example: ::
-
-    >>> res: Res[int, ValueError] = ok(ValueError)(10)
+def unpack(res: Res[T, E]) -> Tuple[T | None, E | None]:
+    """Unpack a reuslt in a Go like way to make error handling simple
     
-"""
+    Examples: ::
 
-Opt: TypeAlias = Ok[T] | Err[Nil]
-"""Type alias for ``Ok[T] | Err[Nil]``. Useful for quick annotations and types.
+        >>> val, err = unpack(ok(ValueError)(10))
+        >>> val
+        10
+        >>> err is None
+        True
+    
+    """
+    match res:
+        case Ok(inner):
+            return inner, None
+        case Err(inner):
+            return None, inner
+        case _:
+            raise TypeError(f'Invalid type for this function. Please provide a subclass of Result')
+
+Opt: TypeAlias = Res[T, Nil]
+"""Type alias for ``Res[T, Nil]``. Useful for quick annotations and types.
 
 Example: ::
 
@@ -928,6 +931,7 @@ def combine_errors(to: F, inherit_message: bool = False):
         return wrapper
 
     return inner
+
 
 
 q = unwrap
