@@ -58,7 +58,7 @@ Examples:
 
 """
 from __future__ import annotations
-from typing import TypeVar, Callable, Generic, Self, cast
+from typing import TypeVar, Callable, Generic, cast
 from pythonix.internals.curry import two
 
 S = TypeVar("S")

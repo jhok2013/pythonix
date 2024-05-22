@@ -2,15 +2,16 @@
 
 Examples: ::
 
+    >>> from pythonix.internals.res import unpack
     >>> data = new(1, 2, 3)
     >>> data = push_right(4)(data)
     >>> data = extend_right(new(5, 6, 7))(data)
-    >>> i, nil = index(7)(data)
+    >>> i, nil = unpack(index(7)(data))
     >>> i
     6
     >>> count_occurrences(3)(data)
     1
-    >>> data, nil = remove(1)(data)
+    >>> data, nil = unpack(remove(1)(data))
     >>> data
     (1, 3, 4, 5, 6, 7)
 

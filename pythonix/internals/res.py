@@ -672,12 +672,8 @@ def and_then(using: Callable[[T], Res[U, E]]) -> Callable[[Res[T, E]], Res[U, E]
         >>> unwrap(new_ok)
         '10'
         >>> new_err: Opt[str] = and_then(succeeds)(err_outcome)
-        >>> unwrap(new_err)
-        Traceback (most recent call last):
-          File "<stdin>", line 1, in <module>
-            unwrap(new_err)
-            raise e
-        res.Nil: Did not expect None
+        >>> unwrap_err(new_err)
+        Nil('Did not expect None')
 
     """
 

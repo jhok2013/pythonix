@@ -6,8 +6,9 @@ appends and pops.
 
 Examples: ::
 
+    >>> from pythonix.internals.res import unpack
     >>> deq = new(1, 2, 3)
-    >>> val, nil = get(0)(deq)
+    >>> val, nil = unpack(get(0)(deq))
     >>> val
     1
 

@@ -3,6 +3,12 @@
 A collection of functional modules in Python 11 inspired by Gleam and Rust.
 If you have like functional programming, but have to program in Python, then check this out.
 
+## TODO
+
+- [] update prelude docs
+- [] update readme with a good tutorial
+- [] create unit tests to bring coverage up to 100%
+
 ## Features
 
 1. Exceptions as values support similar to Rust

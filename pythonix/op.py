@@ -20,11 +20,11 @@ Examples:
 
     Getting and Assigning: ::
 
-        >>> data = [1, 2, 0]
-        >>> data, err = assign(2)(3)(data)
-        >>> val, err = item(2)(data)
+        >>> from pythonix.internals.res import unpack
+        >>> data = [1, 2, 3]
+        >>> val, err = unpack(item(2)(data))
         >>> val
         3
     
 """
-from pythonix.internals.op import where, map_over, fold, attr, item, arg, assign
+from pythonix.internals.op import where, map_over, fold, attr, item, arg

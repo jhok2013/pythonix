@@ -66,4 +66,5 @@ from pythonix.internals.res import (
     null_and_error_safe,
     q,
     qe,
+    combine_errors,
 )

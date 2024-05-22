@@ -33,10 +33,10 @@ Examples:
         >>> (
         ...     Piper(10)                   # Enter pipeable context
         ...     >> add(10)                  # Use curried functions
-        ...     >> res.map(add(30))         # Perform sequential operations
-        ...     >> res.map(add(50))
+        ...     >> res.and_then(add(30))         # Perform sequential operations
+        ...     >> res.and_then(add(50))
         ...     >  res.unwrap               # Intentionally panic if desired
-        >>> )
+        ... )
         100
 
 
