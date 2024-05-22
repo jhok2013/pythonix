@@ -58,7 +58,7 @@ Examples:
 
 """
 from __future__ import annotations
-from typing import TypeVar, Callable, Generic, Self
+from typing import TypeVar, Callable, Generic, Self, cast
 from pythonix.internals.curry import two
 
 S = TypeVar("S")
@@ -289,7 +289,7 @@ def do(func: Callable[[S], U], val: T) -> T:
         However, since we used ``do``, its original value was preserved.
 
     """
-    func(val)
+    func(cast(S, val))
     return val
 
 
@@ -386,7 +386,7 @@ class Piper(Generic[T], object):
         """
         return Piper(op(self.inner))
 
-    def do(self, op: Callable[[T], U]) -> Self[T]:
+    def do(self, op: Callable[[T], U]) -> Piper[T]:
         """Run *op* with *inner*, but return original `Piper`. Same as |
 
         Args:

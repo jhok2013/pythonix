@@ -33,13 +33,13 @@ Examples:
 And much, much more. Everything has its own documentation so check it out.
     
 """
-from __future__ import annotations
 from functools import wraps
+from dataclasses import dataclass
+from abc import ABC
 from typing import (
     Tuple,
     TypeVar,
     Generic,
-    NamedTuple,
     cast,
     ParamSpec,
     Callable,
@@ -48,6 +48,7 @@ from typing import (
 
 P = ParamSpec("P")
 
+NotResError = TypeError("Must pass in an Ok or Err")
 UnwrapErr = ValueError("Attempted to retrieve an Err from an Ok")
 T = TypeVar("T")
 U = TypeVar("U")
@@ -55,6 +56,12 @@ V = TypeVar("V")
 E = TypeVar("E", bound="Exception")
 F = TypeVar("F", bound="Exception")
 G = TypeVar("G", bound="Exception")
+
+
+class BaseRes(Generic[T], ABC):
+    """Base class for use by Ok and Err"""
+
+    inner: T
 
 
 class Nil(Exception):
@@ -68,7 +75,8 @@ class Nil(Exception):
     def __init__(self, message: str = "Did not expect None"):
         super().__init__(message)
 
-class Ok(Generic[T], NamedTuple):
+@dataclass(frozen=True)
+class Ok(BaseRes, Generic[T]):
     """Represents a successful outcome of a function that could have failed.
 
     Useful for pattern matching on a function that returns `Ok[T] | Err[E]`.
@@ -89,8 +97,11 @@ class Ok(Generic[T], NamedTuple):
 
     """
     inner: T
+    __match_args__ = ('inner',)
 
-class Err(Generic[E], NamedTuple):
+
+@dataclass(frozen=True)
+class Err(BaseRes, Generic[E]):
     """Represents a successful outcome of a function that could have failed.
 
     Useful for pattern matching on a function that returns `Ok[T] | Err[E]`.
@@ -109,6 +120,7 @@ class Err(Generic[E], NamedTuple):
         'foo'
 
     """
+    __match_args__ = ('inner',)
     inner: E
 
 Res: TypeAlias = Ok[T] | Err[E]
@@ -127,12 +139,12 @@ def unpack(res: Res[T, E]) -> Tuple[T | None, E | None]:
     
     """
     match res:
-        case Ok(inner):
-            return inner, None
-        case Err(inner):
-            return None, inner
+        case Ok(t):
+            return t, None
+        case Err(e):
+            return None, e
         case _:
-            raise TypeError(f'Invalid type for this function. Please provide a subclass of Result')
+            raise NotResError
 
 Opt: TypeAlias = Res[T, Nil]
 """Type alias for ``Res[T, Nil]``. Useful for quick annotations and types.
@@ -161,8 +173,8 @@ def err(ok_type: type[T]) -> Callable[[E], Res[T, E]]:
 
     """
 
-    def get_err(exception_object: E) -> Res[T, E]:
-        return Err(exception_object)
+    def get_err(err_obj: E) -> Res[T, E]:
+        return cast(Res[T, E], Err(err_obj))
 
     return get_err
 
@@ -213,8 +225,8 @@ def some(inner: T | None) -> Opt[T]:
 
     """
     if inner is not None:
-        return ok(Nil)(inner)
-    return err(T)(Nil())
+        return Ok(inner)
+    return Err(Nil())
 
 
 def is_ok(res: Res[T, E]) -> bool:
@@ -240,6 +252,8 @@ def is_ok(res: Res[T, E]) -> bool:
             return True
         case Err():
             return False
+        case _:
+            raise NotResError
 
 
 def is_err(res: Res[T, E]) -> bool:
@@ -265,6 +279,8 @@ def is_err(res: Res[T, E]) -> bool:
             return False
         case Err():
             return True
+        case _:
+            raise NotResError
 
 
 def is_ok_and(predicate: Callable[[T], bool]) -> Callable[[Res[T, E]], bool]:
@@ -289,8 +305,10 @@ def is_ok_and(predicate: Callable[[T], bool]) -> Callable[[Res[T, E]], bool]:
         match res:
             case Ok(t):
                 return predicate(t)
-            case _:
+            case Err():
                 return False
+            case _:
+                raise NotResError
 
     return inner
 
@@ -315,10 +333,12 @@ def is_err_and(predicate: Callable[[E], bool]) -> Callable[[Res[T, E]], bool]:
 
     def inner(res: Res[T, E]) -> bool:
         match res:
+            case Ok():
+                return False
             case Err(e):
                 return predicate(e)
             case _:
-                return False
+                raise NotResError
 
     return inner
 
@@ -358,6 +378,8 @@ def unwrap(res: Res[T, E]) -> T:
             return cast(T, value)
         case Err(e):
             raise e
+        case _:
+            return False
 
 
 def unwrap_or(default: T) -> Callable[[Res[T, E]], T]:
@@ -385,8 +407,10 @@ def unwrap_or(default: T) -> Callable[[Res[T, E]], T]:
         match res:
             case Ok(val):
                 return val
-            case _:
+            case Err():
                 return default
+            case _:
+                raise NotResError
 
     return inner
 
@@ -418,8 +442,10 @@ def unwrap_or_else(on_err: Callable[[], T]) -> Callable[[Res[T, E]], T]:
         match res:
             case Ok(val):
                 return val
-            case _:
+            case Err():
                 return on_err()
+            case _:
+                raise NotResError
 
     return inner
 
@@ -460,6 +486,8 @@ def unwrap_err(result: Res[T, E]) -> E:
             raise UnwrapErr
         case Err(e):
             return e
+        case _:
+            raise NotResError
 
 
 def map(using: Callable[[T], U]) -> Callable[[Res[T, E]], Res[U, E]]:
@@ -497,9 +525,11 @@ def map(using: Callable[[T], U]) -> Callable[[Res[T, E]], Res[U, E]]:
     def inner(res: Res[T, E]) -> Res[U, E]:
         match res:
             case Ok(t):
-                return ok(E)(using(t))
+                return Ok(using(t))
+            case Err(e):
+                return Err(e)
             case _:
-                return cast(Res[U, E], err(U)(res.inner))
+                raise NotResError
 
     return inner
 
@@ -531,9 +561,11 @@ def map_or(using: Callable[[T], U]) -> Callable[[U], Callable[[Res[T, E]], Res[U
         def inner(res: Res[T, E]) -> Res[U, E]:
             match res:
                 case Ok(t):
-                    return ok(E)(using(t))
+                    return Ok(using(t))
+                case Err():
+                    return Ok(default)
                 case _:
-                    return ok(E)(default)
+                    raise NotResError
 
         return inner
 
@@ -562,12 +594,14 @@ def map_err(using: Callable[[E], F]) -> Callable[[Res[T, E]], Res[T, F]]:
 
     """
 
-    def inner(res: Res[T, E]) -> Res[T, E]:
+    def inner(res: Res[T, E]) -> Res[T, F]:
         match res:
             case Err(e):
-                return err(T)(using(e))
+                return Err(using(e))
+            case Ok(t):
+                return Ok(t)
             case _:
-                return cast(Res[T, F], err(T)(res.inner))
+                raise NotResError
 
     return inner
 
@@ -603,9 +637,11 @@ def map_or_else(
         def inner(res: Res[T, E]) -> Res[U, E]:
             match res:
                 case Ok(t):
-                    return ok(E)(using(t))
+                    return Ok(using(t))
+                case Err():
+                    return Ok(default())
                 case _:
-                    return ok(E)(default())
+                    raise NotResError
 
         return inner
 
@@ -613,7 +649,7 @@ def map_or_else(
 
 
 def and_then(using: Callable[[T], Res[U, E]]) -> Callable[[Res[T, E]], Res[U, E]]:
-    """Replaces *res* with new result from *using*s output
+    """Replaces *res* with new result from *using*s output if Ok
 
     This is useful when you need to run functions that also return a result.
 
@@ -648,9 +684,11 @@ def and_then(using: Callable[[T], Res[U, E]]) -> Callable[[Res[T, E]], Res[U, E]
     def inner(res: Res[T, E]) -> Res[U, E]:
         match res:
             case Ok(t):
-                return cast(Res[U, E], using(t))
+                return using(t)
+            case Err(e):
+                return Err(e)
             case _:
-                return cast(Res[U, E], err(U)(res.inner))
+                raise TypeError('*res* must be an Ok or Err')
 
     return inner
 
@@ -671,18 +709,21 @@ def or_else(using: Callable[[E], Res[T, F]]) -> Callable[[Res[T, E]], Res[T, F]]
     Examples: ::
 
         >>> err_outcome: Res[int, ValueError] = err(int)(ValueError())
-        >>> on_fail = lambda _: Nil()
+        >>> on_fail = lambda _: Err(Nil())
         >>> new_err: Res[int, Nil] = or_else(on_fail)(err_outcome)
         >>> unwrap_err(new_err)
+        Nil('Did not expect None')
 
     """
 
     def inner(res: Res[T, E]) -> Res[T, F]:
         match res:
             case Err(e):
-                return cast(Res[T, F], using(e))
+                return using(e)
+            case Ok(t):
+                return Ok(t)
             case _:
-                return cast(Res[T, F], err(U)(res.inner))
+                raise TypeError('*res* must be an Ok or Err')
 
     return inner
 
@@ -712,12 +753,15 @@ def and_res(new_res: Res[U, E]) -> Callable[[Res[T, E]], Res[U, E]]:
             case Ok():
                 match new_res:
                     case Ok(u):
-                        return ok(E)(u)
+                        return Ok(u)
                     case Err(e):
-                        return err(U)(e)
-                return new_res
+                        return Err(e)
+                    case _:
+                        raise NotResError
             case Err(e):
-                return err(U)(e)
+                return Err(e)
+            case _:
+                raise NotResError
 
     return inner
 
@@ -745,13 +789,17 @@ def or_res(new_res: Res[T, F]) -> Callable[[Res[T, E]], Res[T, F]]:
     def inner(old_res: Res[T, E]) -> Res[T, F]:
         match old_res:
             case Ok(t):
-                return ok(F)(t)
+                return Ok(t)
             case Err():
                 match new_res:
                     case Ok(t):
-                        return ok(F)(t)
+                        return Ok(t)
                     case Err(f):
-                        return err(T)(f)
+                        return Err(f)
+                    case _:
+                        raise NotResError
+            case _:
+                raise NotResError
 
     return inner
 
@@ -778,11 +826,15 @@ def flatten(res: Res[Res[T, E], F]) -> Res[T, E | F]:
         case Ok(inner):
             match inner:
                 case Ok(t):
-                    return cast(Res[T, E | F], ok(E | F)(t))
+                    return Ok(t)
                 case Err(f):
-                    return cast(Res[T, E | F], err(T)(f))
+                    return Err(f)
+                case _:
+                    raise NotResError
         case Err(e):
-            return cast(Res[T, E | F], err(T)(e))
+            return Err(e)
+        case _:
+            raise NotResError
 
 
 def safe(*err_type: type[E]):
@@ -822,9 +874,9 @@ def safe(*err_type: type[E]):
         @wraps(using)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[U, E]:
             try:
-                return cast(Res[U, E], ok(E)(using(*args, **kwargs)))
+                return Ok(using(*args, **kwargs))
             except err_type as e:
-                return cast(Res[U, E], err(U)(e))
+                return Err(e)
 
         return wrapper
 
@@ -888,7 +940,7 @@ def null_and_error_safe(*err_types: type[E]):
             try:
                 return some(using(*args, **kwargs))
             except err_types as e:
-                return map_err(lambda f: Nil(str(f)))(err(T)(e))
+                return Err(Nil(str(e)))
 
         return wrapper
 

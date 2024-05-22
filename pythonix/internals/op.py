@@ -18,10 +18,9 @@ Examples:
         >>> total
         6
 
-    Getting and Assigning: ::
+    Getting from Data Structures: ::
 
-        >>> data = [1, 2, 0]
-        >>> data, err = unpack(assign(2)(3)(data))
+        >>> data = [1, 2, 3]
         >>> val, err = unpack(item(2)(data))
         >>> val
         3
@@ -30,27 +29,22 @@ Examples:
 from typing import (
     Callable,
     Iterable,
+    cast, 
     Iterator,
-    Any,
-    SupportsIndex,
     TypeVar,
-    overload,
-    MutableSequence,
-    Sequence,
-    MutableMapping,
     Mapping,
+    Sequence
 )
 from functools import reduce
-from pythonix.internals.res import null_and_error_safe, safe, Res, Opt, unpack
-from pythonix.internals.curry import two
-from operator import setitem
+from pythonix.internals.res import null_and_error_safe, safe, unpack
+from pythonix.internals.curry import two, three
 
 
 T = TypeVar("T")
 S = TypeVar("S")
 U = TypeVar("U")
 O = TypeVar("O", bound="object")
-K = TypeVar("K", str, int, float, tuple, slice)
+K = TypeVar("K")
 
 
 @two
@@ -83,7 +77,7 @@ def where(using: Callable[[T], bool], iterable: Iterable[T]) -> Iterator[T]:
 
 
 @two
-def map_over(using: Callable[[T], U], iterable: Iterable[T]) -> Iterable[T]:
+def map_over(using: Callable[[T], U], iterable: Iterable[T]) -> Iterable[U]:
     """Run a function over an `Iterable`, return an Iterator of the results
 
     Note:
@@ -108,7 +102,7 @@ def map_over(using: Callable[[T], U], iterable: Iterable[T]) -> Iterable[T]:
 
 
 @two
-def fold(using: Callable[[T, S], U], iterable: Iterable[T | S]) -> U:
+def fold(using: Callable[[T, T], T], iterable: Iterable[T]) -> T:
     """Accumulating pairs of elements to a final value recursively
 
     Args:
@@ -126,44 +120,42 @@ def fold(using: Callable[[T, S], U], iterable: Iterable[T | S]) -> U:
         10
     
     """
-
     return reduce(using, iterable)
 
 
-def attr(name: str, type_hint: type[U] = Any) -> Callable[[T], U]:
+@three
+@null_and_error_safe(AttributeError)
+def attr(attr_type: type[U], name: str, obj: O) -> U:
     """Used to safely retrieve attributes from classes in a functional way.
-
-    Can be used with a `type_hint` parameter to provide better type hint support.
 
     Args:
         name (str): The name of the attribute to retrieve
+        expected_type (type[U]): The expected return type of the attribute
         obj (T): Any object
 
     Returns:
-        opt (Res[U, Nil]): Result type containing the desired value if Ok, or Nil if Err
+        opt (Res[U, Nil]): Result type containing the desired value if Ok, or
+        Nil if Err
 
     Example: ::
 
         >>> from collections import namedtuple
         >>> Point = namedtuple('Point', ('x', 'y'))
         >>> P = Point(10, 10)
-        >>> val, nil = unpack(attr('x')(P))
+        >>> val, nil = unpack(attr(int)('x')(P))
         >>> val
         10
-        >>> val, nil = unpack(attr('z')(P))
+        >>> val, nil = unpack(attr(int)('z')(P))
         >>> nil
         Nil("'Point' object has no attribute 'z'")
 
     """
-
-    @null_and_error_safe(AttributeError)
-    def inner(obj: T) -> U:
-        return getattr(obj, name)
-
-    return inner
+    return cast(U, getattr(obj, name))
 
 
-def item(index: SupportsIndex | K):
+@two
+@null_and_error_safe(IndexError, KeyError, TypeError)
+def item(index: K, iterable: Mapping[K, T] | Sequence[T]) -> T | None:
     """Safely retrieve items from data structures
 
     Note:
@@ -190,21 +182,17 @@ def item(index: SupportsIndex | K):
         1
 
     """
+    if isinstance(iterable, Sequence):
+        match index:
+            case int() | slice():
+                return cast(T, iterable[index])
+            case _:
+                raise TypeError('Index for sequence invalid. Needs int or slice')
+    elif isinstance(iterable, Mapping):
+        return iterable.get(index)
+    else:
+        raise TypeError('Invalid iterable. Must be a subclass of Mapping or Sequence')
 
-    @overload
-    def inner(iterable: Mapping[K, T]) -> Opt[T]: ...
-
-    @overload
-    def inner(iterable: Sequence[T]) -> Opt[T]: ...
-
-    @overload
-    def inner(iterable: Iterable[T]) -> Opt[T]: ...
-
-    @null_and_error_safe(IndexError, KeyError)
-    def inner(iterable: Mapping[K, T] | Sequence[T] | Iterable[T]) -> T:
-        return iterable[index]
-
-    return inner
 
 
 @two
@@ -229,77 +217,3 @@ def arg(val: T, op: Callable[[T], U]) -> U:
     """
     
     return op(val)
-
-
-def assign(key: K):
-    """Assign a value to an index or attr on a list, dict or mutable object.
-
-    Has full type support for each of the three different types.
-
-    Note:
-        Returns a copy of the updated object wrapped in a `Res` that reflects potential errors.
-
-    Args:
-        *key* (K): Any value that can be used as a key for a data structure
-        *val* (U): The value to be assigned to the mutable data structure or object
-        *sequence* (MutableSequence[T], variant): First of three options. A list or list like object
-        *mapping* (MutableMapping[K, V], variant): Second of three options. A dict or dict like object
-        *obj* (O, variant): Third of three options. Any object that allows assigning attributes
-
-    Returns:
-        sequence_copy (Res[MutableSequence[T | U], IndexError]): A copy of the sequence with the additional value wrapped in a result
-        mapping_copy (Res[MutableMapping[K, V], IndexError | KeyError]): A copy of the mapping with the additional value wrapped in a result
-        obj_copy (Res[O, AttributeError]): A copy of the original object with the attribute assigned, wrapped in a result
-
-    Example: ::
-
-        >>> mapping = {'hello': 'world'}
-        >>> val, err = unpack(assign('hola')('mundo')(mapping))
-        >>> val
-        {'hello': 'world', 'hola': 'mundo'}
-        >>> sequence = [1, 2, 0]
-        >>> val, err = unpack(assign(2)(3)(sequence))
-        >>> val
-        [1, 2, 3]
-        >>> class Obj:
-        ...     def __init__(self, foo = None):
-        ...         self.foo = foo
-        ...
-        >>> obj, err = unpack(assign('foo')('bar')(Obj()))
-        >>> obj.foo
-        'bar'
-
-    """
-
-    def get_val(val: U):
-        @overload
-        def get_obj(
-            obj: MutableSequence[T],
-        ) -> Res[MutableSequence[T | U], IndexError]:
-            ...
-
-        @overload
-        def get_obj(
-            obj: MutableMapping[K, T]
-        ) -> Res[MutableMapping[K, T | U], IndexError | KeyError]:
-            ...
-
-        @overload
-        def get_obj(obj: O) -> Res[O, AttributeError]:
-            ...
-
-        @safe(IndexError, KeyError, AttributeError)
-        def get_obj(
-            obj: MutableSequence[T] | MutableMapping[K, T] | O
-        ) -> MutableSequence[T | U] | MutableMapping[K, T | U] | O:
-            if not isinstance(obj, MutableMapping) and not isinstance(
-                obj, MutableSequence
-            ):
-                setattr(obj, key, val)
-                return obj
-            setitem(obj, key, val)
-            return obj
-
-        return get_obj
-
-    return get_val

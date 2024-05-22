@@ -114,7 +114,7 @@ def four(
         def in2(t2: T2) -> Callable[[T3], Callable[[T4], U]]:
             def in3(t3: T3) -> Callable[[T4], U]:
                 def in4(t4: T4) -> U:
-                    func(t1, t2, t3, t4)
+                    return func(t1, t2, t3, t4)
 
                 return in4
 

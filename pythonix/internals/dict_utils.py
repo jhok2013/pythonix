@@ -15,14 +15,14 @@ Examples: ::
     ('1', '2')
 
 """
-from typing import TypeVar, Dict, Callable, Mapping, Tuple
+from typing import TypeVar, Dict, Callable, Mapping, Tuple, cast
 from pythonix.internals.op import item
 from pythonix.internals.res import Opt, unpack
 
 V = TypeVar("V")
 W = TypeVar("W")
-K = TypeVar("K", str, int, float, tuple)
-L = TypeVar("L", str, int, float, tuple)
+K = TypeVar("K")
+L = TypeVar("L")
 
 
 def map_items(using: Callable[[K, V], Tuple[L, W]]):
@@ -130,7 +130,7 @@ def merge(new_dict: Dict[L, W]):
     """
 
     def get_old(old_dict: Dict[K, V]) -> Dict[K | L, V | W]:
-        return old_dict | new_dict
+        return {**cast(Dict[K | L, V | W], old_dict), **cast(Dict[K | L, V | W], new_dict)}
 
     return get_old
 

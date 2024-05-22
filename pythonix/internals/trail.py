@@ -30,11 +30,10 @@ Example: ::
 
 """
 from functools import wraps
-from typing import NamedTuple, Tuple, Callable, ParamSpec, TypeVar, Generic, overload
+from typing import NamedTuple, Tuple, Callable, ParamSpec, TypeVar, Generic, overload, TypeAlias
 from datetime import datetime, timezone
 
 P = ParamSpec("P")
-L = TypeVar("L", bound="Log")
 T = TypeVar("T")
 U = TypeVar("U")
 
@@ -80,6 +79,8 @@ class Critical(Log):
     '''Log object at the CRITICAL severity'''
     ...
 
+L = TypeVar('L', bound='Log')
+LogT: TypeAlias = Info | Debug | Warning | Error | Critical
 
 def log(log_type: type[L]):
     """Creates a function to create a Log
@@ -132,11 +133,11 @@ class Trail(Generic[T], NamedTuple):
 
     """
 
-    logs: Tuple[Log, ...]
+    logs: Tuple[LogT, ...]
     inner: T
 
 
-def new(*logs: L):
+def new(*logs: LogT):
     """Create a new `Trail` object with the desired logs attached.
 
     Example: ::
@@ -161,7 +162,7 @@ def new(*logs: L):
     return get_inner
 
 
-def append(*logs: L):
+def append(*logs: LogT):
     """Append a new series of logs to a `Trail`
 
     Example: ::
@@ -180,7 +181,7 @@ def append(*logs: L):
     return inner
 
 
-def get_logs(trail: Trail[T]) -> Tuple[L, ...]:
+def get_logs(trail: Trail[T]) -> Tuple[LogT, ...]:
     """Convenience function to return the logs of a `Trail`
 
     Example: ::
@@ -195,7 +196,7 @@ def get_logs(trail: Trail[T]) -> Tuple[L, ...]:
     return trail.logs
 
 
-def trail(*logs: L):
+def trail(*logs: LogT):
     """Decorator to always attach certain logs to a Trail of the output
 
     Example: ::
@@ -224,12 +225,12 @@ def trail(*logs: L):
 
 
 @overload
-def blaze(using: Callable[[T], Trail[U]], *logs: L) -> Callable[[Trail[T]], Trail[U]]: ...
+def blaze(using: Callable[[T], Trail[U]], *logs: LogT) -> Callable[[Trail[T]], Trail[U]]: ...
 
 @overload
-def blaze(using: Callable[[T], U], *logs: L) -> Callable[[Trail[T]], Trail[U]]: ...
+def blaze(using: Callable[[T], U], *logs: LogT) -> Callable[[Trail[T]], Trail[U]]: ...
 
-def blaze(using: Callable[[T], Trail[U] | U], *logs: L) -> Callable[[Trail[T]], Trail[U]]:
+def blaze(using: Callable[[T], Trail[U] | U], *logs: LogT) -> Callable[[Trail[T]], Trail[U]]:
     """Mapper to accumulate logs while running
 
     Can use functions that already return a Trail, or that simply return a value.

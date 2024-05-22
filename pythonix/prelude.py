@@ -2,14 +2,11 @@
 TODO
 ====
 
-* Check to see if switching res styles can make things better
-* mypy check the code, bring everything up to 100
 * update prelude docs
 * udpate readme to have a good tutorial
 * Create unit test suites for all funcs
 * Bring code coverage up to 100%
 """
-import pythonix
 import pythonix.res as res
 import pythonix.trail as trail
 import pythonix.op as op

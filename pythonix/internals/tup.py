@@ -15,7 +15,7 @@ Examples: ::
     (1, 3, 4, 5, 6, 7)
 
 """
-from typing import Tuple, TypeVar
+from typing import Tuple, TypeVar, TypeAlias
 from pythonix.internals.op import item
 from pythonix.internals.res import safe, null_and_error_safe, Opt, unpack
 from pythonix.internals.curry import two, three
@@ -23,7 +23,7 @@ from enum import Enum
 
 T = TypeVar("T")
 U = TypeVar("U")
-type IndexInt = int
+IndexInt: TypeAlias = int
 
 
 class Side(Enum):

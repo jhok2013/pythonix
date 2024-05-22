@@ -18,9 +18,9 @@ class TestOp(TestCase):
     def test_attr(self) -> None:
         (
             Piper(self.test_class)
-            .do(lambda point: Piper(point).bind(op.attr("x")).bind(q))
-            .do(lambda point: Piper(point).bind(op.attr("y")).bind(q))
-            .do(lambda point: Piper(point).bind(op.attr("z")).bind(qe))
+            .do(lambda point: Piper(point).bind(op.attr(int)("x")).bind(q))
+            .do(lambda point: Piper(point).bind(op.attr(int)("y")).bind(q))
+            .do(lambda point: Piper(point).bind(op.attr(int)("z")).bind(qe))
         )
 
     def test_item(self) -> None:

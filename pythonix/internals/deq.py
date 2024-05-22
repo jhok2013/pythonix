@@ -13,7 +13,7 @@ Examples: ::
 
 """
 from collections import deque as deque
-from typing import Iterable, TypeVar
+from typing import Iterable, TypeVar, cast, SupportsIndex
 from pythonix.internals.res import null_and_error_safe, safe, null_safe, Opt
 from pythonix.internals.curry import two, three
 from pythonix.internals.res import unpack
@@ -47,8 +47,8 @@ def append(element: U, deq: deque[T]) -> deque[T | U]:
         4
     
     """
-    deq.append(element)
-    return deq
+    deq.append(cast(T, element))
+    return cast(deque[T | U], deq)
 
 
 @two
@@ -63,11 +63,11 @@ def appendleft(element: U, deq: deque[T]) -> deque[T | U]:
         4
 
     """
-    deq.appendleft(element)
-    return deq
+    deq.appendleft(cast(T, element))
+    return cast(deque[T | U], deq)
 
 
-def clear(deq: deque[T]) -> deque[None]:
+def clear(deq: deque[T]) -> deque[T]:
     """Clears the deque of all elements
     
     Example: ::
@@ -124,8 +124,8 @@ def extend(iterable: Iterable[U], deq: deque[T]) -> deque[T | U]:
         deque([1, 2, 3, 4, 5, 6])
     
     """
-    deq.extend(iterable)
-    return deq
+    deq.extend(cast(Iterable[T], iterable))
+    return cast(deque[T | U], deq)
 
 @two
 def extendleft(iterable: Iterable[U], deq: deque[T]) -> deque[T | U]:
@@ -139,8 +139,8 @@ def extendleft(iterable: Iterable[U], deq: deque[T]) -> deque[T | U]:
         deque([1, 2, 3, 4, 5, 6])
     
     """
-    deq.extendleft(iterable)
-    return deq
+    deq.extendleft(cast(Iterable[T], iterable))
+    return cast(deque[T | U], deq)
 
 
 @three
@@ -154,8 +154,8 @@ def insert(element: U, index: int, deq: deque[T]) -> deque[T | U]:
         deque([0, 1, 2, 3])
     
     """
-    deq.insert(index, element)
-    return deq
+    deq.insert(index, cast(T, element))
+    return cast(deque[T | U], deq)
 
 
 def index(element: T, **kwargs: int):
@@ -177,10 +177,12 @@ def index(element: T, **kwargs: int):
         if 'start' in kwargs.keys() and 'stop' in kwargs.keys():
             start = kwargs.get('start')
             stop = kwargs.get('stop')
-            return deq.index(element, start, stop)
+            if start is not None and stop is not None:
+                return deq.index(element, start, stop)
         if 'start' in kwargs.keys():
             start = kwargs.get('start')
-            return deq.index(element, start) 
+            if start is not None:
+                return deq.index(element, start) 
         return deq.index(element)
     
     return inner
@@ -188,7 +190,7 @@ def index(element: T, **kwargs: int):
 
 @two
 @null_and_error_safe(IndexError)
-def get(index: int | slice, deq: deque[T]) -> T:
+def get(index: SupportsIndex, deq: deque[T]) -> T:
     """Retrieve the element at a given index
     
     Examples: ::
@@ -320,7 +322,7 @@ def last(deq: deque[T]) -> Opt[T]:
 
 
 @null_safe
-def maxlen(deq: deque[T]) -> int:
+def maxlen(deq: deque[T]) -> int | None:
     """Gets the maximum length of the deque
     
     Example: ::

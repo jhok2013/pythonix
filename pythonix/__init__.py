@@ -22,7 +22,7 @@ Examples:
     that eror cleanly.
 
     With Pythonix, you can make it obvious if something can fail, be None, and
-    do sequential operations cleanly.
+    do sequential operations cleanly. ::
 
         >>> from pythonix.prelude import *  # Easy imports of essentials
         >>> @curry.two                      # Automatic currying
