@@ -15,24 +15,24 @@ Here are examples of my favorite features:
 
 You can take statements like this:
 
-    ```python
-    data = list(range(0, 300))
-    total = reduce(lambda x, y: x + y, map(lambda x: x + 10, filter(lambda x: x % 2 == 0), data))
-    print(total)
-    ```
+```python
+data = list(range(0, 300))
+total = reduce(lambda x, y: x + y, map(lambda x: x + 10, filter(lambda x: x % 2 == 0), data))
+print(total)
+```
 
 And turn them into more readable statements like this:
 
-    ```python
-    (
-        Piper(range(0,10))
-        >> list
-        >> op.where(fn(int, bool)(lambda x: x % 2 == 0))
-        >> op.map_over(fn(int, int)(lambda x: x + 10))
-        |  print
-        > op.fold(fn(int, int, int)(lambda x, y: x + y))
-    )    
-    ```
+```python
+(
+    Piper(range(0,10))
+    >> list
+    >> op.where(fn(int, bool)(lambda x: x % 2 == 0))
+    >> op.map_over(fn(int, int)(lambda x: x + 10))
+    |  print
+    > op.fold(fn(int, int, int)(lambda x, y: x + y))
+)    
+```
 
 Most of the functions in pythonix are curried and have the subject as the last argument.
 Curried means the arguments are passed in as function calls, and having the subject last
