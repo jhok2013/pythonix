@@ -39,40 +39,40 @@ Curried means the arguments are passed in as function calls, and having the subj
 makes piping possible without changing Python's syntax. To make functions that work with
 piping, take your functions that are like this:
 
-    ```python
-    def get(data: list[int], index: int | slice) -> int:
-        return data[index]
-    
-    first = get([1, 2, 3], 0)
+```python
+def get(data: list[int], index: int | slice) -> int:
+    return data[index]
 
-    ```
+first = get([1, 2, 3], 0)
+
+```
 
 And make them like this.
 
-    ```python
-    def get(index: int | slice):
+```python
+def get(index: int | slice):
 
-        def inner(data: list[int]):
+    def inner(data: list[int]):
 
-            return data[index]
+        return data[index]
 
-        return inner 
+    return inner 
 
-    first = get(0)([1, 2, 3])
+first = get(0)([1, 2, 3])
 
-    ```
+```
 
 Or if that's too much, use the `curry` decorators to make it easier.
 
-    ```python
-    @curry.two
-    @curry.first_to_end
-    def get(data: list[int], index: int | slice) -> int:
-        return data[index]
+```python
+@curry.two
+@curry.first_to_end
+def get(data: list[int], index: int | slice) -> int:
+    return data[index]
 
-    first = get(0)([1, 2, 3])
+first = get(0)([1, 2, 3])
 
-    ```
+```
 
 Back to Piping, there are three functions worth knowing with `Piper`.
 
@@ -86,16 +86,16 @@ to `>>`, `|`, and `>` respectively.
 
 You can also use the `P` operator with pipes for quick bespoke piping of values. Like so:
 
-    ```python
-    (
-        range(0, 10)
-        |P| list
-        |P| op.where(fn(int, bool)(lambda x: x % 2 == 0))
-        |P| op.map_over(fn(int, int)(lambda x: x + 10))
-        |P| op.fold(fn(int, int, int)(lambda x, y: x + y))
-        |P| print
-    )
-    ```
+```python
+(
+    range(0, 10)
+    |P| list
+    |P| op.where(fn(int, bool)(lambda x: x % 2 == 0))
+    |P| op.map_over(fn(int, int)(lambda x: x + 10))
+    |P| op.fold(fn(int, int, int)(lambda x, y: x + y))
+    |P| print
+)
+```
 
 It doesn't always save space, but it does make it easier to read
 sequential function calls. Because the functions are decoupled
@@ -206,14 +206,14 @@ get it done.
 
 Plus, it's easy to apply functions to results with `P` and `Piper`, remember?
 
-    ```python
-    data, err = get_customer_data(10) |P| unpack
-    if err is not None:
-        logging.error(e)
-        raise e
-    if data is None:
-        raise TypeError('Something went wrong')
-    ```
+```python
+data, err = get_customer_data(10) |P| unpack
+if err is not None:
+    logging.error(e)
+    raise e
+if data is None:
+    raise TypeError('Something went wrong')
+```
 
 You can also handle results with the `res` module, which has a lot of utilties
 for unwrapping, handling, and transforming results safely. The module shamelessly
@@ -221,9 +221,9 @@ stolen from Rust's excellent methods, but implemented like Gleam.
 
 Here is an example:
 
-    ```python
-    data = res.unwrap(get_customer_data(10))
-    ```
+```python
+data = res.unwrap(get_customer_data(10))
+```
 
 The above example will give you the Ok data if any, or raise the E instead. You can
 also unwrap the err with `unwrap_err`. Since this is such a common thing, there is
@@ -236,42 +236,42 @@ There are a lot of steps that can fail, so we use `q` to unwrap the errors
 and `safe` to catch them as we do. We can also combine multiple errors into one
 with `combine_errors`.
 
-    ```python
-    @res.safe(HTTPError, ValueError)
-    def get_customer_data(customer_id: int) -> dict:
-        return get_data(customer_id)
+```python
+@res.safe(HTTPError, ValueError)
+def get_customer_data(customer_id: int) -> dict:
+    return get_data(customer_id)
 
-    @res.combine_errors(ValueError(), True)
-    @res.safe(HTTPError, ValueError, Nil)
-    def accumulate_customer_orders() -> int:
-        customer_ids: list[int] = (
-            Piper(get(customer_endoint))
-            >> fn(Response, dict)(lambda response: response.json())
-            >> op.item('ids')
-            > q
-        ) 
-        total_orders = (
-            Piper(customer_ids)
-            >> op.map_over(get_customer_data)
-            >> op.where(res.is_ok)
-            >> op.map_over(q)
-            >> op.map_over(op.item('orders'))
-            >> op.map_over(q)
-            > op.fold(fn(int, int, int)(lambda x, y: x + y))
-        )
-        return total_orders
+@res.combine_errors(ValueError(), True)
+@res.safe(HTTPError, ValueError, Nil)
+def accumulate_customer_orders() -> int:
+    customer_ids: list[int] = (
+        Piper(get(customer_endoint))
+        >> fn(Response, dict)(lambda response: response.json())
+        >> op.item('ids')
+        > q
+    ) 
+    total_orders = (
+        Piper(customer_ids)
+        >> op.map_over(get_customer_data)
+        >> op.where(res.is_ok)
+        >> op.map_over(q)
+        >> op.map_over(op.item('orders'))
+        >> op.map_over(q)
+        > op.fold(fn(int, int, int)(lambda x, y: x + y))
+    )
+    return total_orders
 
-    def main():
-        current_orders: Res[int, ValueError] = accumulate_customer_orders()
-        match current_orders:
-            case Ok(orders):
-                print(f'Currently there are {orders} orders')
-            case Err(e):
-                logging.error(e)
-                ping_slack_error_channel(str(e))
-                raise e
+def main():
+    current_orders: Res[int, ValueError] = accumulate_customer_orders()
+    match current_orders:
+        case Ok(orders):
+            print(f'Currently there are {orders} orders')
+        case Err(e):
+            logging.error(e)
+            ping_slack_error_channel(str(e))
+            raise e
 
-    ```
+```
 
 ### Null Handling
 
@@ -285,48 +285,48 @@ If a function value could be `None`, you can use the `some` function to
 catch that and return a `Res[T, Nil]` result, which can be abbreviated to
 `Opt[T]`.
 
-    ```python
-    val: str | None = {'hello': 'world'}.get('hello')
-    opt: Opt[str] = some(val)
-    ```
+```python
+val: str | None = {'hello': 'world'}.get('hello')
+opt: Opt[str] = some(val)
+```
 
 For function calls that could return `None`, you can have them return `Opt[T]`
 instead.
 
-    ```python
-    # With some
-    def get_hello(data: dict[str]) -> Opt[str]:
-        return some(data.get('hello'))
+```python
+# With some
+def get_hello(data: dict[str]) -> Opt[str]:
+    return some(data.get('hello'))
 
-    hello: Opt[str] = get_hello({'hello': 'world'})
+hello: Opt[str] = get_hello({'hello': 'world'})
 
-    # With ok and err
-    def get_hola(data: dict[str]) -> Res[str, Nil]:
-        try:
-            return ok(Nil)(data['hola'])
-        except KeyError as e:
-            return err(str)(Nil(str(e)))
-    
-    hola: Res[str, Nil] = get_hola({'hola': 'mundo'})
-    # Res[str, Nil] is the same as Opt[str]
-    ```
+# With ok and err
+def get_hola(data: dict[str]) -> Res[str, Nil]:
+    try:
+        return ok(Nil)(data['hola'])
+    except KeyError as e:
+        return err(str)(Nil(str(e)))
+
+hola: Res[str, Nil] = get_hola({'hola': 'mundo'})
+# Res[str, Nil] is the same as Opt[str]
+```
 
 Or you can use the `res.null_safe` or `res.null_and_error_safe` decorators to do that for you.
 
-    ```python
-    @null_safe
-    def get_hello(data: dict[str]) -> str | None:
-        return data.get('hello')
-    
-    hello: Opt[str] = get_hello({'hello': 'world'})
+```python
+@null_safe
+def get_hello(data: dict[str]) -> str | None:
+    return data.get('hello')
 
-    @null_and_error_safe(KeyError)
-    def get_hola(data: dict[str]) -> str | None:
-        return data['hola']
-    
-    hola: Res[str, Nil] = get_hola({'hola': 'mundo'})
-    # Res[str, Nil] is the same as Opt[str]
-    ```
+hello: Opt[str] = get_hello({'hello': 'world'})
+
+@null_and_error_safe(KeyError)
+def get_hola(data: dict[str]) -> str | None:
+    return data['hola']
+
+hola: Res[str, Nil] = get_hola({'hola': 'mundo'})
+# Res[str, Nil] is the same as Opt[str]
+```
 
 Using these patterns makes it almost impossible to have unexpected or unhandled null
 values in your code. Isn't that great?!
@@ -343,19 +343,19 @@ Some other notable features include:
 
 Each module is available for import like this:
 
-    ```python
-    from pythonix.prelude import *
-    ```
+```python
+from pythonix.prelude import *
+```
 
 Import all from prelude will include all of the essentials like `Piper`, `P`, common `res` classes and functions, `fn`, etc.
 
 Or you can specify a particular module like this:
 
-    ```python
-    import pythonix.op as op
-    import pythonix.tup as tup
-    import pythonix.deq as deq
-    ```
+```python
+import pythonix.op as op
+import pythonix.tup as tup
+import pythonix.deq as deq
+```
 
 All the modules are fully tested, promote immutability, fully type checked and transparent, and fully documented.
 
