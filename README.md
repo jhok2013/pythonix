@@ -1,6 +1,6 @@
 # PYTHONIX
 
-A collection of functional modules in Python 11 inspired by Gleam and Rust.
+A collection of functional modules in Python 10 inspired by Gleam and Rust.
 If you like functional oriented programming, but have to program in Python, then check this out.
 
 The goal is to take some great features of Rust like strong types, errors by value with Results
