@@ -183,7 +183,7 @@ But what if I want something simple and fast like in Go? Say no more.
 
 Try this instead:
 
-    ```python
+```python
 
     data, err = unpack(get_customer_data(10))
     if err is not None:
