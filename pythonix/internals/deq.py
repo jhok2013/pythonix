@@ -32,20 +32,20 @@ def new(*vals: T, **kwargs: int) -> deque[T]:
         deque([1, 2, 3])
 
     """
-    return deque(vals, maxlen=kwargs.get('maxlen'))
+    return deque(vals, maxlen=kwargs.get("maxlen"))
 
 
 @two
 def append(element: U, deq: deque[T]) -> deque[T | U]:
     """Appends an element to the end of a ``deque``
-    
+
     Example: ::
 
         >>> deq: deque[int] = append(4)(deque((1, 2, 3)))
         >>> val, nil = unpack(pop(deq))
         >>> val
         4
-    
+
     """
     deq.append(cast(T, element))
     return cast(deque[T | U], deq)
@@ -54,7 +54,7 @@ def append(element: U, deq: deque[T]) -> deque[T | U]:
 @two
 def appendleft(element: U, deq: deque[T]) -> deque[T | U]:
     """Appends an element to the beginning of a ``deque``
-    
+
     Example: ::
 
         >>> deq: deque[int] = appendleft(4)(new(1, 2, 3))
@@ -69,7 +69,7 @@ def appendleft(element: U, deq: deque[T]) -> deque[T | U]:
 
 def clear(deq: deque[T]) -> deque[T]:
     """Clears the deque of all elements
-    
+
     Example: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
@@ -77,7 +77,7 @@ def clear(deq: deque[T]) -> deque[T]:
         >>> val, nil = unpack(pop(cleared))
         >>> nil
         Nil('pop from an empty deque')
-    
+
     """
     deq.clear()
     return deq
@@ -85,7 +85,7 @@ def clear(deq: deque[T]) -> deque[T]:
 
 def copy(deq: deque[T]) -> deque[T]:
     """Returns a shallow copy of the deque
-    
+
     Example: ::
 
         >>> deq1: deque[int] = new(1, 2, 3)
@@ -93,7 +93,7 @@ def copy(deq: deque[T]) -> deque[T]:
         >>> deq1 = appendleft(4)(deq1)
         >>> deq2
         deque([1, 2, 3])
-    
+
     """
     return deq.copy()
 
@@ -101,13 +101,13 @@ def copy(deq: deque[T]) -> deque[T]:
 @two
 def count(element: T, deq: deque[T]) -> int:
     """Returns a count of how many elements match the provided one
-    
+
     Example: ::
 
         >>> deq: deque[int] = new(1, 2, 2, 3)
         >>> count(2)(deq)
         2
-    
+
     """
     return deq.count(element)
 
@@ -115,29 +115,30 @@ def count(element: T, deq: deque[T]) -> int:
 @two
 def extend(iterable: Iterable[U], deq: deque[T]) -> deque[T | U]:
     """Combines an iterable to the right side of the deque
-    
+
     Example: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
         >>> combined = extend([4, 5, 6])(deq)
         >>> deq
         deque([1, 2, 3, 4, 5, 6])
-    
+
     """
     deq.extend(cast(Iterable[T], iterable))
     return cast(deque[T | U], deq)
 
+
 @two
 def extendleft(iterable: Iterable[U], deq: deque[T]) -> deque[T | U]:
     """Combines an iterable to the left side of the deque
-    
+
     Example: ::
 
         >>> deq: deque[int] = new(4, 5, 6)
         >>> combined = extendleft([3, 2, 1])(deq)
         >>> deq
         deque([1, 2, 3, 4, 5, 6])
-    
+
     """
     deq.extendleft(cast(Iterable[T], iterable))
     return cast(deque[T | U], deq)
@@ -146,13 +147,13 @@ def extendleft(iterable: Iterable[U], deq: deque[T]) -> deque[T | U]:
 @three
 def insert(element: U, index: int, deq: deque[T]) -> deque[T | U]:
     """Insert a new element at the specified index
-    
+
     Example: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
         >>> insert(0)(0)(deq)
         deque([0, 1, 2, 3])
-    
+
     """
     deq.insert(index, cast(T, element))
     return cast(deque[T | U], deq)
@@ -160,7 +161,7 @@ def insert(element: U, index: int, deq: deque[T]) -> deque[T | U]:
 
 def index(element: T, **kwargs: int):
     """Retrieves the index of the first occurence of a given element
-    
+
     Use the ``start`` and ``stop`` *kwargs* to specify where to start and stop.
 
     Examples: ::
@@ -170,21 +171,21 @@ def index(element: T, **kwargs: int):
         1
         >>> index(2, start=2)(deq)
         2
-    
+
     """
 
     def inner(deq: deque[T]) -> int:
-        if 'start' in kwargs.keys() and 'stop' in kwargs.keys():
-            start = kwargs.get('start')
-            stop = kwargs.get('stop')
+        if "start" in kwargs.keys() and "stop" in kwargs.keys():
+            start = kwargs.get("start")
+            stop = kwargs.get("stop")
             if start is not None and stop is not None:
                 return deq.index(element, start, stop)
-        if 'start' in kwargs.keys():
-            start = kwargs.get('start')
+        if "start" in kwargs.keys():
+            start = kwargs.get("start")
             if start is not None:
-                return deq.index(element, start) 
+                return deq.index(element, start)
         return deq.index(element)
-    
+
     return inner
 
 
@@ -192,7 +193,7 @@ def index(element: T, **kwargs: int):
 @null_and_error_safe(IndexError)
 def get(index: SupportsIndex, deq: deque[T]) -> T:
     """Retrieve the element at a given index
-    
+
     Examples: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
@@ -202,7 +203,7 @@ def get(index: SupportsIndex, deq: deque[T]) -> T:
         >>> val, nil = unpack(get(4)(deq))
         >>> nil
         Nil('deque index out of range')
-    
+
     """
     return deq[index]
 
@@ -210,7 +211,7 @@ def get(index: SupportsIndex, deq: deque[T]) -> T:
 @null_and_error_safe(IndexError)
 def pop(deq: deque[T]) -> T:
     """Retrieve and remove the last element
-    
+
     Examples: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
@@ -219,14 +220,15 @@ def pop(deq: deque[T]) -> T:
         3
         >>> deq
         deque([1, 2])
-    
+
     """
     return deq.pop()
+
 
 @null_and_error_safe(IndexError)
 def popleft(deq: deque[T]) -> T:
     """Retrieve and remove the first element
-    
+
     Examples: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
@@ -235,7 +237,7 @@ def popleft(deq: deque[T]) -> T:
         1
         >>> deq
         deque([2, 3])
-    
+
     """
     return deq.popleft()
 
@@ -244,14 +246,14 @@ def popleft(deq: deque[T]) -> T:
 @safe(IndexError)
 def remove(element: T, deq: deque[T]) -> deque[T]:
     """Remove an element if it's present
-    
+
     Example: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
         >>> deq, nil = unpack(remove(2)(deq))
         >>> deq
         deque([1, 3])
-    
+
     """
     deq.remove(element)
     return deq
@@ -259,13 +261,13 @@ def remove(element: T, deq: deque[T]) -> deque[T]:
 
 def reverse(deq: deque[T]) -> deque[T]:
     """Reverse the order of elements
-    
+
     Examples: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
         >>> reverse(deq)
         deque([3, 2, 1])
-    
+
     """
     deq.reverse()
     return deq
@@ -273,7 +275,7 @@ def reverse(deq: deque[T]) -> deque[T]:
 
 def rotate(n: int = 1):
     """Brings the last element to be first *n* times
-    
+
     Examples: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
@@ -283,40 +285,40 @@ def rotate(n: int = 1):
         deque([2, 3, 1])
         >>> rotate()(deq)
         deque([1, 2, 3])
-    
-    """
-    def inner(deq: deque[T]) -> deque[T]:
 
+    """
+
+    def inner(deq: deque[T]) -> deque[T]:
         deq.rotate(n)
         return deq
-    
+
     return inner
 
 
 def first(deq: deque[T]) -> Opt[T]:
     """Gets the first element
-    
+
     Example: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
         >>> val, nil = unpack(first(deq))
         >>> val
         1
-    
+
     """
     return get(0)(deq)
 
 
 def last(deq: deque[T]) -> Opt[T]:
     """Gets the last element
-    
+
     Example: ::
 
         >>> deq: deque[int] = new(1, 2, 3)
         >>> val, nil = unpack(last(deq))
         >>> val
         3
-    
+
     """
     return get(-1)(deq)
 
@@ -324,7 +326,7 @@ def last(deq: deque[T]) -> Opt[T]:
 @null_safe
 def maxlen(deq: deque[T]) -> int | None:
     """Gets the maximum length of the deque
-    
+
     Example: ::
 
         >>> deq: deque[int] = new(1, 2, 3, maxlen=3)

@@ -75,6 +75,7 @@ class Nil(Exception):
     def __init__(self, message: str = "Did not expect None"):
         super().__init__(message)
 
+
 @dataclass(frozen=True)
 class Ok(BaseRes, Generic[T]):
     """Represents a successful outcome of a function that could have failed.
@@ -96,8 +97,9 @@ class Ok(BaseRes, Generic[T]):
         5
 
     """
+
     inner: T
-    __match_args__ = ('inner',)
+    __match_args__ = ("inner",)
 
 
 @dataclass(frozen=True)
@@ -120,15 +122,18 @@ class Err(BaseRes, Generic[E]):
         'foo'
 
     """
-    __match_args__ = ('inner',)
+
+    __match_args__ = ("inner",)
     inner: E
+
 
 Res: TypeAlias = Ok[T] | Err[E]
 """Convenient type alias for a value that could be Ok or Err"""
 
+
 def unpack(res: Res[T, E]) -> Tuple[T | None, E | None]:
     """Unpack a reuslt in a Go like way to make error handling simple
-    
+
     Examples: ::
 
         >>> val, err = unpack(ok(ValueError)(10))
@@ -136,7 +141,7 @@ def unpack(res: Res[T, E]) -> Tuple[T | None, E | None]:
         10
         >>> err is None
         True
-    
+
     """
     match res:
         case Ok(t):
@@ -145,6 +150,7 @@ def unpack(res: Res[T, E]) -> Tuple[T | None, E | None]:
             return None, e
         case _:
             raise NotResError
+
 
 Opt: TypeAlias = Res[T, Nil]
 """Type alias for ``Res[T, Nil]``. Useful for quick annotations and types.
@@ -379,7 +385,7 @@ def unwrap(res: Res[T, E]) -> T:
         case Err(e):
             raise e
         case _:
-            return False
+            raise NotResError
 
 
 def unwrap_or(default: T) -> Callable[[Res[T, E]], T]:
@@ -684,7 +690,7 @@ def and_then(using: Callable[[T], Res[U, E]]) -> Callable[[Res[T, E]], Res[U, E]
             case Err(e):
                 return Err(e)
             case _:
-                raise TypeError('*res* must be an Ok or Err')
+                raise NotResError
 
     return inner
 
@@ -719,7 +725,7 @@ def or_else(using: Callable[[E], Res[T, F]]) -> Callable[[Res[T, E]], Res[T, F]]
             case Ok(t):
                 return Ok(t)
             case _:
-                raise TypeError('*res* must be an Ok or Err')
+                raise NotResError
 
     return inner
 
@@ -741,6 +747,10 @@ def and_res(new_res: Res[U, E]) -> Callable[[Res[T, E]], Res[U, E]]:
         >>> resolved: Opt[str] = and_res(new)(old)
         >>> unwrap(resolved)
         'hello'
+        >>> new: Opt[str] = err(str)(Nil())
+        >>> resolved: Opt[str] = and_res(new)(old)
+        >>> unwrap_err(resolved)
+        Nil('Did not expect None')
 
     """
 
@@ -779,6 +789,10 @@ def or_res(new_res: Res[T, F]) -> Callable[[Res[T, E]], Res[T, F]]:
         >>> resolved: Res[int, ValueError] = or_res(new)(old)
         >>> unwrap_err(resolved)
         ValueError()
+        >>> new: Res[int, ValueError] = ok(ValueError)(10)
+        >>> resolved: Res[int, TypeError] = or_res(new)(old)
+        >>> unwrap(resolved)
+        10
 
     """
 
@@ -979,7 +993,6 @@ def combine_errors(to: F, inherit_message: bool = False):
         return wrapper
 
     return inner
-
 
 
 q = unwrap

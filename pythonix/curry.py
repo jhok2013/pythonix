@@ -22,4 +22,14 @@ You can even use it in place to modify functions.
     'hello, world'
 
 """
-from pythonix.internals.curry import two, three, four, five, six, seven, eight, nine, to_end_two
+from pythonix.internals.curry import (
+    two,
+    three,
+    four,
+    five,
+    six,
+    seven,
+    eight,
+    nine,
+    to_end_two,
+)

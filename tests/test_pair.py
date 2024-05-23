@@ -45,7 +45,9 @@ class TestPair(TestCase):
         pair = p.new("hola")("jose")
         bind = Piper(pair)
         pair_2 = (
-            bind.bind(p.set_key(self.expected_key)).bind(p.set_value(self.expected_value))
+            bind.bind(p.set_key(self.expected_key)).bind(
+                p.set_value(self.expected_value)
+            )
         ).inner
         key = pair_2.key
         value = pair_2.value

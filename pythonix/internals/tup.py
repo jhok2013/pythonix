@@ -142,9 +142,7 @@ def count_occurrences(value: T, tuples: Tuple[T, ...]) -> int:
 
 
 @three
-def insert(
-    index: IndexInt, insert: U, tuples: Tuple[T, ...]
-) -> Tuple[T | U, ...]:
+def insert(index: IndexInt, insert: U, tuples: Tuple[T, ...]) -> Tuple[T | U, ...]:
     """Recreate the `Tuple` with the provided element at the index
 
     Example: ::
@@ -176,14 +174,14 @@ def remove(index: IndexInt, tuples: Tuple[T, ...]) -> Tuple[T, ...]:
 
 
 push_left = push(Side.LEFT)
-'''Same as push(Side.LEFT)'''
+"""Same as push(Side.LEFT)"""
 push_right = push(Side.RIGHT)
-'''Same as push(Side.RIGHT)'''
+"""Same as push(Side.RIGHT)"""
 extend_left = extend(Side.LEFT)
-'''Same as extend(Side.LEFT)'''
+"""Same as extend(Side.LEFT)"""
 extend_right = extend(Side.RIGHT)
-'''Same as extend(Side.RIGHT)'''
+"""Same as extend(Side.RIGHT)"""
 last = get(-1)
-'''Same as get(-1)'''
+"""Same as get(-1)"""
 first = get(0)
-'''Same as get(0)'''
+"""Same as get(0)"""

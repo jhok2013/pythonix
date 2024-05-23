@@ -30,7 +30,16 @@ Example: ::
 
 """
 from functools import wraps
-from typing import NamedTuple, Tuple, Callable, ParamSpec, TypeVar, Generic, overload, TypeAlias
+from typing import (
+    NamedTuple,
+    Tuple,
+    Callable,
+    ParamSpec,
+    TypeVar,
+    Generic,
+    overload,
+    TypeAlias,
+)
 from datetime import datetime, timezone
 
 P = ParamSpec("P")
@@ -39,48 +48,56 @@ U = TypeVar("U")
 
 
 class Log(NamedTuple):
-    '''Immutable container for log messages.
+    """Immutable container for log messages.
 
     Note:
         Avoid creating this directly and use the `info`, `debug`, `warning`, `error`,
         or `critical` functions instead.
-    '''
+    """
+
     created_dt: datetime
-    '''datetime object for when the object was created'''
+    """datetime object for when the object was created"""
 
     message: str
-    '''The log message'''
+    """The log message"""
 
     def __str__(self) -> str:
         return f'{type(self).__name__}("{self.created_dt.strftime('%Y-%m-%dT%H:%M:%SZ')}", "{self.message}")'
 
 
 class Info(Log):
-    '''Log object at the INFO severity'''
+    """Log object at the INFO severity"""
+
     ...
 
 
 class Debug(Log):
-    '''Log object at the DEBUG severity'''
+    """Log object at the DEBUG severity"""
+
     ...
 
 
 class Warning(Log):
-    '''Log object at the WARNING severity'''
+    """Log object at the WARNING severity"""
+
     ...
 
 
 class Error(Log):
-    '''Log object at the ERROR severity'''
+    """Log object at the ERROR severity"""
+
     ...
 
 
 class Critical(Log):
-    '''Log object at the CRITICAL severity'''
+    """Log object at the CRITICAL severity"""
+
     ...
 
-L = TypeVar('L', bound='Log')
+
+L = TypeVar("L", bound="Log")
 LogT: TypeAlias = Info | Debug | Warning | Error | Critical
+
 
 def log(log_type: type[L]):
     """Creates a function to create a Log
@@ -96,22 +113,22 @@ def log(log_type: type[L]):
     """
 
     def inner(message: str) -> L:
-        '''Create a Log with the message and type'''
+        """Create a Log with the message and type"""
         return log_type(datetime.now(timezone.utc), message)
 
     return inner
 
 
 debug = log(Debug)
-'''Severity: DEBUG'''
+"""Severity: DEBUG"""
 info = log(Info)
-'''Severity: INFO'''
+"""Severity: INFO"""
 warning = log(Warning)
-'''Severity: WARNING'''
+"""Severity: WARNING"""
 error = log(Error)
-'''Severity: ERROR'''
+"""Severity: ERROR"""
 critical = log(Critical)
-'''Severity: CRITICAL'''
+"""Severity: CRITICAL"""
 
 
 class Trail(Generic[T], NamedTuple):
@@ -225,12 +242,20 @@ def trail(*logs: LogT):
 
 
 @overload
-def blaze(using: Callable[[T], Trail[U]], *logs: LogT) -> Callable[[Trail[T]], Trail[U]]: ...
+def blaze(
+    using: Callable[[T], Trail[U]], *logs: LogT
+) -> Callable[[Trail[T]], Trail[U]]:
+    ...
+
 
 @overload
-def blaze(using: Callable[[T], U], *logs: LogT) -> Callable[[Trail[T]], Trail[U]]: ...
+def blaze(using: Callable[[T], U], *logs: LogT) -> Callable[[Trail[T]], Trail[U]]:
+    ...
 
-def blaze(using: Callable[[T], Trail[U] | U], *logs: LogT) -> Callable[[Trail[T]], Trail[U]]:
+
+def blaze(
+    using: Callable[[T], Trail[U] | U], *logs: LogT
+) -> Callable[[Trail[T]], Trail[U]]:
     """Mapper to accumulate logs while running
 
     Can use functions that already return a Trail, or that simply return a value.
@@ -264,7 +289,6 @@ def blaze(using: Callable[[T], Trail[U] | U], *logs: LogT) -> Callable[[Trail[T]
     """
 
     def get_val(val: Trail[T]) -> Trail[U]:
-
         previous_logs, inner = val
         out: U | Trail[U] = using(inner)
 
@@ -273,6 +297,5 @@ def blaze(using: Callable[[T], Trail[U] | U], *logs: LogT) -> Callable[[Trail[T]
                 return new(*previous_logs + new_logs + logs)(new_inner)
             case out_val:
                 return new(*previous_logs + logs)(out_val)
-        
-    return get_val
 
+    return get_val

@@ -26,15 +26,7 @@ Examples:
         3
     
 """
-from typing import (
-    Callable,
-    Iterable,
-    cast, 
-    Iterator,
-    TypeVar,
-    Mapping,
-    Sequence
-)
+from typing import Callable, Iterable, cast, Iterator, TypeVar, Mapping, Sequence
 from functools import reduce
 from pythonix.internals.res import null_and_error_safe, safe, unpack
 from pythonix.internals.curry import two, three
@@ -118,7 +110,7 @@ def fold(using: Callable[[T, T], T], iterable: Iterable[T]) -> T:
         >>> add = lambda x, y: x + y
         >>> fold(add)(data)
         10
-    
+
     """
     return reduce(using, iterable)
 
@@ -187,12 +179,11 @@ def item(index: K, iterable: Mapping[K, T] | Sequence[T]) -> T | None:
             case int() | slice():
                 return cast(T, iterable[index])
             case _:
-                raise TypeError('Index for sequence invalid. Needs int or slice')
+                raise TypeError("Index for sequence invalid. Needs int or slice")
     elif isinstance(iterable, Mapping):
         return iterable.get(index)
     else:
-        raise TypeError('Invalid iterable. Must be a subclass of Mapping or Sequence')
-
+        raise TypeError("Invalid iterable. Must be a subclass of Mapping or Sequence")
 
 
 @two
@@ -213,7 +204,7 @@ def arg(val: T, op: Callable[[T], U]) -> U:
         >>> add_ten = lambda x: x + 10
         >>> arg(10)(add_ten)
         20
-        
+
     """
-    
+
     return op(val)

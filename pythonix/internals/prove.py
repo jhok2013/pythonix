@@ -30,7 +30,7 @@ def that(predicate: Callable[[T], bool], val: T) -> None:
         you expect without changing the original value.
 
     Example: ::
-        
+
         >>> val: int = 10
         >>> is_even = lambda x: x % 2 == 0
         >>> _, err = unpack(that(is_even)(val))

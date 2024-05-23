@@ -91,11 +91,21 @@ class TestDecorators(TestCase):
     def test_safe(self) -> None:
         op: Callable[[str], str] = lambda x: x
         proto_op = safe(TypeError, AttributeError)(op)
-        (Piper("hello").bind(proto_op).bind(res.q).bind(lambda s: self.assertEqual(s, "hello")))
+        (
+            Piper("hello")
+            .bind(proto_op)
+            .bind(res.q)
+            .bind(lambda s: self.assertEqual(s, "hello"))
+        )
 
     def test_safe_fail(self) -> None:
         @safe(TypeError)
         def will_throw_type_error(_):
             raise TypeError("Failed successfully")
 
-        (Piper(None).bind(will_throw_type_error).bind(res.qe).bind(self.assertIsNotNone))
+        (
+            Piper(None)
+            .bind(will_throw_type_error)
+            .bind(res.qe)
+            .bind(self.assertIsNotNone)
+        )

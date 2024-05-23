@@ -41,5 +41,5 @@ from pythonix.internals.trail import (
     trail,
     blaze,
     Log,
-    log
+    log,
 )

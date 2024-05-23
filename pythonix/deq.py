@@ -32,5 +32,5 @@ from pythonix.internals.deq import (
     rotate,
     maxlen,
     clear,
-    count
+    count,
 )

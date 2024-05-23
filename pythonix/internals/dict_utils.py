@@ -48,7 +48,7 @@ def map_keys(using: Callable[[K], L]):
     """Applies *using* over dict keys to return a new dict with the results
 
     Example: ::
-        
+
         >>> data: dict[str, int] = {'First': 1, 'Second': 2}
         >>> upper_dict: dict[str, int] = map_keys(str.upper)(data)
         >>> upper_keys: tuple[str, ...] = tuple(upper_dict.keys())
@@ -121,7 +121,7 @@ def merge(new_dict: Dict[L, W]):
     """Merges two dictionaries together, overriding the first with the second
 
     Example: ::
-        
+
         >>> old: dict[str, int] = {'foo': 0}
         >>> new: dict[int, str] = {1: 'bar'}
         >>> merge(new)(old)
@@ -130,7 +130,10 @@ def merge(new_dict: Dict[L, W]):
     """
 
     def get_old(old_dict: Dict[K, V]) -> Dict[K | L, V | W]:
-        return {**cast(Dict[K | L, V | W], old_dict), **cast(Dict[K | L, V | W], new_dict)}
+        return {
+            **cast(Dict[K | L, V | W], old_dict),
+            **cast(Dict[K | L, V | W], new_dict),
+        }
 
     return get_old
 
