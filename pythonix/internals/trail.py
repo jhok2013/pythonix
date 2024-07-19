@@ -62,7 +62,7 @@ class Log(NamedTuple):
     """The log message"""
 
     def __str__(self) -> str:
-        return f'{type(self).__name__}("{self.created_dt.strftime('%Y-%m-%dT%H:%M:%SZ')}", "{self.message}")'
+        return f'{type(self).__name__}("{self.created_dt.strftime("%Y-%m-%dT%H:%M:%SZ")}", "{self.message}")'
 
 
 class Info(Log):
