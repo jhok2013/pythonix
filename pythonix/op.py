@@ -27,4 +27,4 @@ Examples:
         3
     
 """
-from pythonix.internals.op import where, map_over, fold, attr, item, arg
+from pythonix.internals.op import where, map_over, fold, attr, item, arg, call

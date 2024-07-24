@@ -56,6 +56,7 @@ from pythonix.internals.res import (
     some,
     Res,
     Opt,
+    nil,
     Nil,
     or_res,
     unwrap_err,

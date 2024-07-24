@@ -22,7 +22,7 @@ U = TypeVar("U")
 
 @two
 @safe(AssertionError)
-def that(predicate: Callable[[T], bool], val: T) -> None:
+def that(predicate: Callable[[T], bool], val: T) -> T:
     """Assert that the provided function is true if given the value.
 
     Note:
@@ -39,11 +39,12 @@ def that(predicate: Callable[[T], bool], val: T) -> None:
 
     """
     assert predicate(val) == True
+    return val
 
 
 @two
 @safe(AssertionError)
-def equals(left: U, right: T) -> None:
+def equals(left: U, right: T) -> T:
     """Assert that two values are equal.
 
     Example: ::
@@ -56,10 +57,11 @@ def equals(left: U, right: T) -> None:
 
     """
     assert left == right
+    return right
 
 
 @safe(AssertionError)
-def is_true(val: bool) -> None:
+def is_true(val: bool) -> bool:
     """Assert that the provided value is `True`
 
     Example: ::
@@ -71,11 +73,12 @@ def is_true(val: bool) -> None:
 
     """
     assert val == True
+    return val
 
 
 @two
 @safe(AssertionError)
-def is_an(expected: type[T], actual: T) -> None:
+def is_an(expected: type[T], actual: T) -> T:
     """Assert that the value is an instance of the expected type
 
     Example: ::
@@ -87,11 +90,12 @@ def is_an(expected: type[T], actual: T) -> None:
 
     """
     assert isinstance(actual, expected)
+    return actual
 
 
 @two
 @safe(AssertionError)
-def contains(find: T, iterable: Iterable[T]) -> None:
+def contains(find: T, iterable: Iterable[T]) -> Iterable[T]:
     """Assert that the value is in the provided iterable
 
     Example: ::
@@ -103,3 +107,4 @@ def contains(find: T, iterable: Iterable[T]) -> None:
 
     """
     assert find in iterable
+    return iterable

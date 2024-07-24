@@ -208,3 +208,7 @@ def arg(val: T, op: Callable[[T], U]) -> U:
     """
 
     return op(val)
+
+
+def call(op: Callable[[], U]) -> U:
+    return op()

@@ -235,6 +235,12 @@ def some(inner: T | None) -> Opt[T]:
     return Err(Nil())
 
 
+def nil(some_type: type[T]):
+    def inner(message: str = 'Did not expect None') -> Opt[T]:
+        return cast(Opt[T], Err(Nil(message)))
+    return inner
+
+
 def is_ok(res: Res[T, E]) -> bool:
     """Return `True` if the `Res` is `Ok`, else ``False``
 
