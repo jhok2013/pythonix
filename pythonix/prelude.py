@@ -38,8 +38,8 @@ Modules:
 import pythonix.res as res
 import pythonix.trail as trail
 import pythonix.op as op
-
-# import pythonix.req as req
+import pythonix.json as json
+import pythonix.req as req
 import pythonix.curry as curry
 import pythonix.tup as tup
 import pythonix.dict_utils as dict_utils
@@ -48,5 +48,4 @@ import pythonix.prove as prove
 import pythonix.deq as deq
 from pythonix.grammar import P, Piper
 from pythonix.fn import fn
-
 from pythonix.res import Ok, Err, Nil, q, Res, qe, ok, err, Opt, unpack

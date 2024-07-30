@@ -236,8 +236,9 @@ def some(inner: T | None) -> Opt[T]:
 
 
 def nil(some_type: type[T]):
-    def inner(message: str = 'Did not expect None') -> Opt[T]:
+    def inner(message: str = "Did not expect None") -> Opt[T]:
         return cast(Opt[T], Err(Nil(message)))
+
     return inner
 
 
