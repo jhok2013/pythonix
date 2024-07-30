@@ -38,8 +38,8 @@ from typing import (
     TypeVar,
     Generic,
     overload,
-    TypeAlias,
 )
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 P = ParamSpec("P")
@@ -96,8 +96,6 @@ class Critical(Log):
 
 
 L = TypeVar("L", bound="Log")
-LogT: TypeAlias = Info | Debug | Warning | Error | Critical
-
 
 def log(log_type: type[L]):
     """Creates a function to create a Log
@@ -131,7 +129,8 @@ critical = log(Critical)
 """Severity: CRITICAL"""
 
 
-class Trail(Generic[T], NamedTuple):
+@dataclass(frozen=True, init=False)
+class Trail(Generic[T]):
     """Container type used to wrap a value with a series of Log type records
 
     Note:
@@ -139,8 +138,8 @@ class Trail(Generic[T], NamedTuple):
 
     Examples: ::
 
-        >>> trailed: Trail[int] = new(info('starting'))(10)
-        >>> logs, val = trailed
+        >>> trailed: Trail[int] = Trail(10, info('string'))
+        >>> val, logs = unpack(trailed)
         >>> val
         10
         >>> log, *rest = logs
@@ -150,70 +149,44 @@ class Trail(Generic[T], NamedTuple):
 
     """
 
-    logs: Tuple[LogT, ...]
     inner: T
+    logs: Tuple[L, ...]
+    __match_args__ = ('inner', 'logs')
 
+    def __init__(self, inner: T, *logs: L) -> None:
+        self.logs = logs
+        self.inner = inner
 
-def new(*logs: LogT):
-    """Create a new `Trail` object with the desired logs attached.
+def unwrap(trail: Trail[T]) -> T:
+    return trail.inner
 
-    Example: ::
+def unpack(trail: Trail[T]) -> Tuple[T, Tuple[L, ...]]:
+    return trail.inner, trail.logs
 
-        >>> trailed: Trail[int] = new(info('starting'))(10)
-        >>> logs, val = trailed
-        >>> val
-        10
-        >>> log, *rest = logs
-        >>> dt, message = log
-        >>> message
-        'starting'
-
-    """
-
-    def get_inner(inner: T) -> Trail[T]:
-        """
-        Attach the wrapped value to the `Trail`
-        """
-        return Trail(logs, inner)
-
-    return get_inner
-
-
-def append(*logs: LogT):
+def append(*logs: L):
     """Append a new series of logs to a `Trail`
 
     Example: ::
 
-        >>> t = new(info('starting'))(10)
+        >>> t = Trail(10, info('starting'))
         >>> t = append(info('ending'))(t)
-        >>> logs, val = t
+        >>> val, logs = unpack(t)
         >>> len(logs)
         2
 
     """
 
     def inner(trail: Trail[T]) -> Trail[T]:
-        return new(*(trail.logs + logs))(trail.inner)
+        match trail:
+            case Trail(inner, old_logs):
+                return Trail(inner, *(old_logs + logs))
+            case _:
+                raise TypeError(f'Expected Trail. Found {type(trail)}')
 
     return inner
 
 
-def get_logs(trail: Trail[T]) -> Tuple[LogT, ...]:
-    """Convenience function to return the logs of a `Trail`
-
-    Example: ::
-
-        >>> t = new(info('hello'))(10)
-        >>> logs = get_logs(t)
-        >>> dt, message = logs[0]
-        >>> message
-        'hello'
-
-    """
-    return trail.logs
-
-
-def trail(*logs: LogT):
+def on_start(*logs: L):
     """Decorator to always attach certain logs to a Trail of the output
 
     Example: ::
@@ -234,7 +207,7 @@ def trail(*logs: LogT):
     def inner(func: Callable[P, U]):
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Trail[U]:
-            return new(*logs)(func(*args, **kwargs))
+            return Trail(func(*args, **kwargs), *logs)
 
         return wrapper
 
@@ -243,18 +216,18 @@ def trail(*logs: LogT):
 
 @overload
 def blaze(
-    using: Callable[[T], Trail[U]], *logs: LogT
+    using: Callable[[T], Trail[U]], *logs: L
 ) -> Callable[[Trail[T]], Trail[U]]:
     ...
 
 
 @overload
-def blaze(using: Callable[[T], U], *logs: LogT) -> Callable[[Trail[T]], Trail[U]]:
+def blaze(using: Callable[[T], U], *logs: L) -> Callable[[Trail[T]], Trail[U]]:
     ...
 
 
 def blaze(
-    using: Callable[[T], Trail[U] | U], *logs: LogT
+    using: Callable[[T], Trail[U] | U], *logs: L
 ) -> Callable[[Trail[T]], Trail[U]]:
     """Mapper to accumulate logs while running
 
@@ -265,9 +238,9 @@ def blaze(
     Example: ::
 
         >>> add_ten = lambda x: x + 10
-        >>> t = new(info('Initial 10'))(10)
+        >>> t = Trail(10, info('Initial'))
         >>> t = blaze(add_ten, info('Added another ten'))(t)
-        >>> logs, val = t
+        >>> val, logs = unpack(t)
         >>> dt, message = logs[-1]
         >>> message
         'Added another ten'
@@ -279,7 +252,7 @@ def blaze(
 
         >>> add_ten_trailer = trail(info('Adding ten with trail'))(add_ten)
         >>> t = blaze(add_ten_trailer)(t)
-        >>> logs, val = t
+        >>> val, logs = unpack(t)
         >>> dt, message = logs[-1]
         >>> message
         'Adding ten with trail'
@@ -289,13 +262,14 @@ def blaze(
     """
 
     def get_val(val: Trail[T]) -> Trail[U]:
-        previous_logs, inner = val
+        inner: T = val.inner
+        previous_logs: Tuple[L, ...] = val.logs
         out: U | Trail[U] = using(inner)
 
         match out:
             case Trail(new_logs, new_inner):
-                return new(*previous_logs + new_logs + logs)(new_inner)
+                return Trail(new_inner, *(previous_logs + new_logs + logs))
             case out_val:
-                return new(*previous_logs + logs)(out_val)
+                return Trail(out_val, *(previous_logs + logs))
 
     return get_val

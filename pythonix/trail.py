@@ -38,7 +38,7 @@ from pythonix.internals.trail import (
     error,
     critical,
     Trail,
-    trail,
+    on_start,
     blaze,
     Log,
     log,

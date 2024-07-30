@@ -47,6 +47,8 @@ import pythonix.grammar as grammar
 import pythonix.prove as prove
 import pythonix.deq as deq
 import pythonix.either as either
+import pythonix.shortcuts as shortcuts
 from pythonix.grammar import P, Piper
 from pythonix.fn import fn
-from pythonix.res import Ok, Err, Nil, q, Res, qe, ok, err, Opt, unpack
+from pythonix.res import Ok, Err, Nil, Res, ok, err, Opt
+from pythonix.shortcuts import unwrap, unpack, q, u
