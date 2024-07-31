@@ -18,8 +18,10 @@ Example: ::
     ('bar', 10)
 
 """
-from typing import NamedTuple, Tuple, TypeVar, Generic, TypeAlias, Callable
+from functools import singledispatch
+from typing import Tuple, TypeVar, Generic, TypeAlias, Callable, overload
 from pythonix.curry import two
+from dataclasses import dataclass
 
 
 T = TypeVar("T")
@@ -27,7 +29,8 @@ U = TypeVar("U")
 KeyStr: TypeAlias = str
 
 
-class Pair(Generic[T], NamedTuple):
+@dataclass(frozen=True)
+class Pair(Generic[T]):
     """A typed key value pair whose key is a `str`. Immutable by default.
 
     Note:
@@ -55,6 +58,8 @@ class Pair(Generic[T], NamedTuple):
 Pairs: TypeAlias = Tuple[Pair[T], ...]
 """Convenient type alias for a tuple of key value pairs"""
 
+def unpack(pair: Pair[T]) -> Tuple[str, T]:
+    return pair.key, pair.value
 
 @two
 def new(key: KeyStr, value: T) -> Pair[T]:
@@ -78,87 +83,40 @@ def new(key: KeyStr, value: T) -> Pair[T]:
     """
     return Pair(key, value)
 
+@overload
+def key(val: str) -> Callable[[Pair[T]], Pair[T]]: ...
 
-@two
-def set_key(key: KeyStr, pair: Pair[T]) -> Pair[T]:
-    """Creates a new `Pair` from a provided one with the provided key.
+@overload
+def key(val: Pair[T]) -> str: ...
 
-    Args:
-        key (KeyStr): The desired key
-        pair (Pair[T]): The pair whose key will be replaced
+def key(val: str | Pair[T]) -> Callable[[Pair[T]], Pair[T]] | str:
+    
+    @singledispatch
+    def dispatch(val: str) -> Callable[[Pair[T]], Pair[T]]:
+        return lambda pair: Pair(val, pair.value)
+    
+    @dispatch.register(Pair)
+    def _(val: Pair[T]) -> str:
+        return val.key
+    
+    def _(_):
+        raise TypeError('Invalid argument. Expected str or Pair[T]')
+    
+    return dispatch(val)
 
-    Returns:
-        pair (Pair[T]): A new Pair[T] with the same value but different key
+@overload
+def value(val: Pair[T]) -> T: ...
 
-    Example: ::
+@overload
+def value(val: T) -> Callable[[Pair[T]], Pair[T]]: ...
 
-        >>> pair = new('foo')(10)
-        >>> pair = set_key('bar')(pair)
-        >>> pair.key
-        'bar'
+def value(val: T | Pair[T]) -> T | Callable[[Pair[T]], Pair[T]]:
 
-    """
-    return new(key)(pair.value)
-
-
-@two
-def set_value(value: U, pair: Pair[T]) -> Pair[U]:
-    """Creates a new `Pair` with a new value, preserving its key.
-
-    Args:
-        value (U): The new value, of the same or different type
-        pair (Pair[T]): A pair with the same or different inner type
-
-    Returns:
-        new_pair (Pair[U]): A pair with the updated value but identical key
-
-    Example: ::
-
-        >>> pair = new('foo')(5)
-        >>> pair = set_value(10)(pair)
-        >>> pair.value
-        10
-
-    """
-    return new(pair.key)(value)
-
-
-def get_value(pair: Pair[T]) -> T:
-    """Retrieves the `value` of a provided `Pair`
-
-    Args:
-        pair (Pairt[T]): A pair that contains a value
-
-    Returns:
-        value (T): The contained value
-
-    Example: ::
-
-        >>> pair = new('foo')(10)
-        >>> get_value(pair)
-        10
-
-    """
-    return pair.value
-
-
-def get_key(pair: Pair[T]) -> KeyStr:
-    """Retrieves the `key` of a provided `Pair`
-
-    Args:
-        pair (Pair[T]): A pair that contains a key and a value
-
-    Returns:
-        key (KeyStr): The key of the Pair
-
-    Example: ::
-
-        >>> pair = new('foo')(10)
-        >>> get_key(pair)
-        'foo'
-
-    """
-    return pair.key
+    match val:
+        case Pair(_, value):
+            return value
+        case new_val:
+            return lambda pair: Pair(pair.key, new_val)
 
 
 @two
@@ -180,4 +138,4 @@ def map_value(using: Callable[[T], U], pair: Pair[T]) -> Pair[U]:
         10
 
     """
-    return set_value(using(pair.value))(pair)
+    return value(using(pair.value))(pair)

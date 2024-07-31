@@ -31,15 +31,15 @@ Example: ::
 """
 from pythonix.internals.trail import (
     new,
-    get_logs,
-    info,
-    debug,
-    warning,
-    error,
-    critical,
     Trail,
     on_start,
     blaze,
     Log,
-    log,
+    append,
+    unpack,
+    unwrap,
+    Info,
+    Critical,
+    Debug,
+    Error
 )

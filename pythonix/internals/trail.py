@@ -54,82 +54,39 @@ class Log(NamedTuple):
         Avoid creating this directly and use the `info`, `debug`, `warning`, `error`,
         or `critical` functions instead.
     """
-
-    created_dt: datetime
-    """datetime object for when the object was created"""
-
     message: str
     """The log message"""
 
     def __str__(self) -> str:
         return f'{type(self).__name__}("{self.created_dt.strftime("%Y-%m-%dT%H:%M:%SZ")}", "{self.message}")'
 
-
 class Info(Log):
     """Log object at the INFO severity"""
-
-    ...
-
+    created_dt: datetime = datetime.now(timezone.utc)
 
 class Debug(Log):
     """Log object at the DEBUG severity"""
-
-    ...
+    created_dt: datetime = datetime.now(timezone.utc)
 
 
 class Warning(Log):
     """Log object at the WARNING severity"""
-
-    ...
+    created_dt: datetime = datetime.now(timezone.utc)
 
 
 class Error(Log):
     """Log object at the ERROR severity"""
-
-    ...
+    created_dt: datetime = datetime.now(timezone.utc)
 
 
 class Critical(Log):
     """Log object at the CRITICAL severity"""
-
-    ...
+    created_dt: datetime = datetime.now(timezone.utc)
 
 
 L = TypeVar("L", bound="Log")
 
-def log(log_type: type[L]):
-    """Creates a function to create a Log
-
-    Examples: ::
-
-        >>> log_info = log(Info)
-        >>> info_message = log_info('Hello world')
-        >>> time, message = info_message
-        >>> message
-        'Hello world'
-
-    """
-
-    def inner(message: str) -> L:
-        """Create a Log with the message and type"""
-        return log_type(datetime.now(timezone.utc), message)
-
-    return inner
-
-
-debug = log(Debug)
-"""Severity: DEBUG"""
-info = log(Info)
-"""Severity: INFO"""
-warning = log(Warning)
-"""Severity: WARNING"""
-error = log(Error)
-"""Severity: ERROR"""
-critical = log(Critical)
-"""Severity: CRITICAL"""
-
-
-@dataclass(frozen=True, init=False)
+@dataclass(frozen=True)
 class Trail(Generic[T]):
     """Container type used to wrap a value with a series of Log type records
 
@@ -138,12 +95,12 @@ class Trail(Generic[T]):
 
     Examples: ::
 
-        >>> trailed: Trail[int] = Trail(10, info('string'))
+        >>> trailed: Trail[int] = Trail(10, Info('string'))
         >>> val, logs = unpack(trailed)
         >>> val
         10
         >>> log, *rest = logs
-        >>> dt, message = log
+        >>> mesage, dt = log
         >>> message
         'starting'
 
@@ -153,9 +110,15 @@ class Trail(Generic[T]):
     logs: Tuple[L, ...]
     __match_args__ = ('inner', 'logs')
 
-    def __init__(self, inner: T, *logs: L) -> None:
-        self.logs = logs
-        self.inner = inner
+
+def new(*logs: L):
+
+    def get_inner(inner: T) -> Trail[T]:
+
+        return Trail(inner, logs)
+    
+    return get_inner
+
 
 def unwrap(trail: Trail[T]) -> T:
     return trail.inner
@@ -168,8 +131,8 @@ def append(*logs: L):
 
     Example: ::
 
-        >>> t = Trail(10, info('starting'))
-        >>> t = append(info('ending'))(t)
+        >>> t = Trail(10, Info('starting'))
+        >>> t = append(Info('ending'))(t)
         >>> val, logs = unpack(t)
         >>> len(logs)
         2
@@ -179,7 +142,7 @@ def append(*logs: L):
     def inner(trail: Trail[T]) -> Trail[T]:
         match trail:
             case Trail(inner, old_logs):
-                return Trail(inner, *(old_logs + logs))
+                return Trail(inner, old_logs + logs)
             case _:
                 raise TypeError(f'Expected Trail. Found {type(trail)}')
 
@@ -191,14 +154,14 @@ def on_start(*logs: L):
 
     Example: ::
 
-        >>> @trail(info('Starting'))
+        >>> @trail(Info('Starting'))
         ... def add_ten(x: int) -> int:
         ...     return x + 10
         ...
-        >>> logs, val = add_ten(10)
+        >>> val, logs = unpack(add_ten(10))
         >>> val
         20
-        >>> dt, message = logs[0]
+        >>> message, dt = logs[0]
         >>> message
         'Starting'
 
@@ -207,7 +170,7 @@ def on_start(*logs: L):
     def inner(func: Callable[P, U]):
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Trail[U]:
-            return Trail(func(*args, **kwargs), *logs)
+            return Trail(func(*args, **kwargs), logs)
 
         return wrapper
 
@@ -238,10 +201,10 @@ def blaze(
     Example: ::
 
         >>> add_ten = lambda x: x + 10
-        >>> t = Trail(10, info('Initial'))
-        >>> t = blaze(add_ten, info('Added another ten'))(t)
+        >>> t = Trail(10, Info('Initial'))
+        >>> t = blaze(add_ten, Info('Added another ten'))(t)
         >>> val, logs = unpack(t)
-        >>> dt, message = logs[-1]
+        >>> message, dt = logs[-1]
         >>> message
         'Added another ten'
         >>> val
@@ -250,10 +213,10 @@ def blaze(
     You can also use functions that return a Trail, and blaze will handle
     the log concatenation. ::
 
-        >>> add_ten_trailer = trail(info('Adding ten with trail'))(add_ten)
+        >>> add_ten_trailer = trail(Info('Adding ten with trail'))(add_ten)
         >>> t = blaze(add_ten_trailer)(t)
         >>> val, logs = unpack(t)
-        >>> dt, message = logs[-1]
+        >>> message, dt = logs[-1]
         >>> message
         'Adding ten with trail'
         >>> val
@@ -267,9 +230,13 @@ def blaze(
         out: U | Trail[U] = using(inner)
 
         match out:
-            case Trail(new_logs, new_inner):
-                return Trail(new_inner, *(previous_logs + new_logs + logs))
+            case Trail(new_inner, new_logs):
+                match (previous_logs, new_logs, logs):
+                    case (tuple(old), tuple(new), tuple(blaze_logs)):
+                        return Trail(new_inner, (old + blaze_logs + new))
+                    case _:
+                        raise TypeError(f'Invalid logs. Types are: {type(previous_logs)}, {type(new_logs)}, {type(logs)}')
             case out_val:
-                return Trail(out_val, *(previous_logs + logs))
+                return Trail(out_val, (previous_logs + logs))
 
     return get_val

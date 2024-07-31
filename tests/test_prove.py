@@ -8,7 +8,11 @@ class TestProve(TestCase):
         return super().setUp()
 
     def test_that(self) -> None:
-        (self.start.bind(prove.that(lambda x: x == 10)).bind(q))
+        (
+            self.start
+            >> prove.that(lambda x: x == 10)
+            > q
+        )
 
     def test_equal(self) -> None:
         (self.start.bind(prove.equals(10)).bind(q))

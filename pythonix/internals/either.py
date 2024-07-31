@@ -57,7 +57,7 @@ def map(side: type[Left] | type[Right]):
     def get_op(op: Callable[[L | R], U]):
         def get_either(either: Either[L, R]) -> Either[L | U, R | U]:
             match side:
-                case Left():
+                case l if l is Left:
                     match either:
                         case Left(inner):
                             return left(R)(op(inner))
@@ -65,7 +65,7 @@ def map(side: type[Left] | type[Right]):
                             return right(U)(inner)
                         case _:
                             raise TypeError(f"Expected Either but found {type(either)}")
-                case Right():
+                case r if r is Right:
                     match either:
                         case Left(inner):
                             return left(U)(inner)

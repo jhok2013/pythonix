@@ -1,8 +1,16 @@
 from json import JSONDecodeError, JSONDecoder, JSONEncoder, load, loads, dump, dumps
-from typing import overload, Callable, TypeVar, Any, TypedDict
-from _typeshed import SupportsWrite, SupportsRead
+from typing import overload, Callable, TypeVar, Any, TypedDict, Protocol, Generic
 from pythonix.res import Res, ok, err
 
+T = TypeVar('T')
+
+class SupportsWrite(Protocol, Generic[T]):
+
+    def write(self): ...
+
+class SupportsRead(Protocol, Generic[T]):
+
+    def read(self): ...
 
 class JSONError(Exception):
     def __init__(self, message: str):
@@ -38,7 +46,7 @@ class DecodeOpts(TypedDict):
     object_pairs_hook: Callable[[list[tuple[Any, Any]]], Any] | None = None
 
 
-def pretty(options: EncodeOpts) -> EncodeOpts:
+def pretty(options: EncodeOpts = EncodeOpts()) -> EncodeOpts:
     """Sets an EncodeOpts dictionary to have an indent of 4"""
     options.update(EncodeOpts(indent=4))
     return options
