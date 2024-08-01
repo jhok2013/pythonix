@@ -25,11 +25,17 @@ U = TypeVar("U")
 def that(predicate: Callable[[T], bool], val: T) -> T:
     """Assert that the provided function is true if given the value.
 
-    Note:
-        This is useful with a `Do` pipe to check that values match what
-        you expect without changing the original value.
+    This is useful with a `Do` pipe to check that values match what
+    you expect without changing the original value.
 
-    Example: ::
+    Args:
+        predicate (Fn[T, bool]): Function to evaluate the value
+        val (T): The value to be evaluated
+    
+    Returns:
+        outcome (Res[T, AssertionError]): The value if it evaluated True
+
+    ## Example ::
 
         >>> val: int = 10
         >>> is_even = lambda x: x % 2 == 0
@@ -47,7 +53,14 @@ def that(predicate: Callable[[T], bool], val: T) -> T:
 def equals(left: U, right: T) -> T:
     """Assert that two values are equal.
 
-    Example: ::
+    Args:
+        left (U): A value to be evaluated for equality
+        right (T): A value to be evaluated for equality
+
+    Returns:
+        result (Res[T, AssertionError]): Right value or an Err
+    
+    ## Example ::
 
         >>> expected: int = 10
         >>> actual: int = 10

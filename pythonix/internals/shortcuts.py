@@ -29,16 +29,17 @@ def unwrap(
     wrapped: Res[T, E] | Trail[U] | type[Left] | type[Right]
 ) -> T | U | Callable[[Either[L, R]], L] | Callable[[Either[L, R]], R]:
 
-    dispatches = {
-        Ok: unwrap_res,
-        Err: unwrap_res,
-        Trail: unwrap_trail,
-        Left: unwrap_either(Left),
-        Right: unwrap_either(Right)
-    }
-    if (dispatch := dispatches.get(type(wrapped))) is None:
-        raise TypeError('No valid type found')
-    return dispatch(wrapped)
+    match wrapped:
+        case Ok() | Err():
+            return unwrap_res(wrapped)
+        case Trail():
+            return unwrap_trail(wrapped)
+        case left if left is Left:
+            return unwrap_either(Left)
+        case right if right is Right:
+            return unwrap_either(Right)
+        case _:
+            raise TypeError(f'No valid type found. Found {type(wrapped)}')
 
 @overload
 def unpack(packed: Res[T, E]) -> Tuple[T | None, E | None]: ...
@@ -67,8 +68,6 @@ def unpack(
     if (dispatch := dispatches.get(type(packed))) is None:
         raise TypeError('No valid type found')
     return dispatch(packed)
-
-
 
 
 q = unwrap

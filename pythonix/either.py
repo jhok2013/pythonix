@@ -4,7 +4,5 @@ from pythonix.internals.either import (
     Right,
     unwrap,
     map,
-    unpack,
-    left,
-    right,
+    unpack
 )

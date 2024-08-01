@@ -1,6 +1,22 @@
+"""Utility functions to encode and decode JSON values
+
+To encode a value to JSON use `encode` ::
+
+    >>> data: dict[str, str] = {"hello": "world"}
+    >>> encoded_res: Res[str, JSONError] = encode()(data)
+    >>> encoded_res
+    Ok(inner='{"hello": "world"}')
+
+To decode a value from JSON use `decode` ::
+
+    >>> decoded_res: Res[dict, JSONError] = decode(dict)('{"hello": "world"}')
+    >>> decoded_res
+    Ok(inner={'hello': 'world'})
+
+"""
 from json import JSONDecodeError, JSONDecoder, JSONEncoder, load, loads, dump, dumps
-from typing import overload, Callable, TypeVar, Any, TypedDict, Protocol, Generic
-from pythonix.res import Res, ok, err
+from typing import overload, Callable, TypeVar, Any, TypedDict, Protocol, Generic, cast
+from pythonix.res import Res, Ok, Err
 
 T = TypeVar('T')
 
@@ -53,7 +69,25 @@ def pretty(options: EncodeOpts = EncodeOpts()) -> EncodeOpts:
 
 
 def encode(**options):
-    """Encode an object to JSON."""
+    """Encode an object to JSON.
+    
+    Args:
+        options (dict[str, Any]): kwargs argument. Should be unloaded from EncodeOpts
+        encodeable_obj (SupportsWrite[str]): An object with a write method
+        encodeable_obj (Any): An object that can be encoded to JSON
+        
+    Returns:
+        write_result (Res[SupportsWrite[str], JSONError]): A result if encodeable_obj is SupportsWrite[str]
+        result (Res[str, JSONError]): A result containing the encoded object as a str
+    
+    ## Examples ::
+
+        >>> encodable: dict[str, str] = {"hello": "world"}
+        >>> encoded_res: Res[str, JSONError] = encode()(encodable)
+        >>> encoded_res
+        Ok(inner='{"hello": "world"}')
+
+    """
 
     @overload
     def get_obj(obj: SupportsWrite[str]) -> Res[SupportsWrite[str], JSONError]:
@@ -69,19 +103,35 @@ def encode(**options):
         try:
             if writable := hasattr(encodeable_obj, "write"):
                 dump(encodeable_obj, **options)
-                return ok(JSONError)(encodeable_obj)
-
-            return ok(JSONError)(dumps(encodeable_obj, **options))
+                return Ok(JSONError)(encodeable_obj)
+            return Ok(JSONError)(dumps(encodeable_obj, **options))
         except (ValueError, TypeError) as e:
             if writable:
-                return err(SupportsWrite[str])(JSONError(str(e)))
-            return err(str)(JSONError(str(e)))
+                return Err(SupportsWrite[str])(JSONError(str(e)))
+            return Err(str)(JSONError(str(e)))
 
     return get_obj
 
 
-def decode(expected_type: type[DecodableT] = dict, **options):
-    """Decode an object from JSON"""
+def decode(expected_type: type[DecodableT] = dict, options: DecodeOpts = DecodeOpts()):
+    """Decode an object from JSON
+    
+    Args:
+        expected_type (type[DecodableT]): Default `dict`. The type to be expected when you decode
+        options (DecodeOpts): Default `DecodeOpts()`. Options for decoding the JSON. Optional
+        decodable_json (str | bytes | bytearray | SupportsRead[str]): JSON encoded data
+    
+    Returns:
+        result (Res[DecodableT, JSONError]): Decoded JSON as your expected type. Or an Err.
+    
+    ## Examples
+
+    >>> encoded: str = '{"hello": "world"}'
+    >>> decoded: Res[dict, JSONError] = decode(dict)(encoded)
+    >>> decoded
+    Ok(inner={'hello': 'world'})
+
+    """
 
     def get_obj(
         decodable_json: str | bytes | bytearray | SupportsRead[str],
@@ -100,13 +150,9 @@ def decode(expected_type: type[DecodableT] = dict, **options):
             if not isinstance(
                 decoded := method(decodable_json, **options), expected_type
             ):
-                return err(DecodableT)(
-                    JSONError(
-                        f"Expected to decode {type(expected_type)} but found {type(decoded)}"
-                    )
-                )
-            return ok(JSONError)(decoded)
+                return Err(DecodableT)(JSONError(f"Expected to decode {type(expected_type)} but found {type(decoded)}"))
+            return Ok(JSONError)(decoded)
         except (ValueError, TypeError, JSONDecodeError) as e:
-            return err(DecodableT)(JSONError(str(e)))
+            return Err(DecodableT)(JSONError(str(e)))
 
     return get_obj

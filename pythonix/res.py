@@ -36,7 +36,6 @@ And much, much more. Everything has its own documentation so check it out.
 from pythonix.internals.res import (
     and_res,
     and_then,
-    err,
     flatten,
     is_err,
     is_err_and,
@@ -48,7 +47,6 @@ from pythonix.internals.res import (
     unpack,
     map_or_else,
     null_safe,
-    ok,
     or_else,
     safe,
     map_err,

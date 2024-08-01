@@ -6,7 +6,7 @@ from pythonix.internals.res import safe
 
 class TestOk(TestCase):
     def setUp(self) -> None:
-        self.test_res = res.ok(Exception)(5)
+        self.test_res = res.Ok(Exception)(5)
         return super().setUp()
 
     def test_is_funcs(self) -> None:
@@ -35,18 +35,18 @@ class TestOk(TestCase):
 
     def test_and_funcs(self) -> None:
         self.assertEqual(
-            res.and_then(lambda x: res.ok(Exception)(x + 5))(self.test_res).inner, 10
+            res.and_then(lambda x: res.Ok(Exception)(x + 5))(self.test_res).inner, 10
         )
-        self.assertEqual(res.and_res(res.ok(Exception)(10))(self.test_res).inner, 10)
+        self.assertEqual(res.and_res(res.Ok(Exception)(10))(self.test_res).inner, 10)
 
     def test_or_funcs(self) -> None:
         self.assertEqual(res.or_else(lambda e: 10)(self.test_res).inner, 5)
-        self.assertEqual(res.or_res(res.err(int)(ValueError))(self.test_res).inner, 5)
+        self.assertEqual(res.or_res(res.Err(int)(ValueError))(self.test_res).inner, 5)
 
 
 class TestErr(TestCase):
     def setUp(self) -> None:
-        self.test_res = res.err(int)(Exception())
+        self.test_res = res.Err(int)(Exception())
 
     def test_is_funcs(self) -> None:
         self.assertTrue(res.is_err(self.test_res))
@@ -68,19 +68,19 @@ class TestErr(TestCase):
 
     def test_and_funcs(self) -> None:
         self.assertIsInstance(
-            res.and_then(lambda x: res.ok(x + 5)(Exception))(self.test_res).inner,
+            res.and_then(lambda x: res.Ok(x + 5)(Exception))(self.test_res).inner,
             Exception,
         )
         self.assertIsInstance(
-            res.and_res(res.ok(10)(Exception))(self.test_res).inner, Exception
+            res.and_res(res.Ok(10)(Exception))(self.test_res).inner, Exception
         )
 
     def test_or_funcs(self) -> None:
         self.assertIsInstance(
-            res.or_res(res.err(int)(ValueError()))(self.test_res).inner, ValueError
+            res.or_res(res.Err(int)(ValueError()))(self.test_res).inner, ValueError
         )
         self.assertIsInstance(
-            res.or_else(lambda e: res.err(int)(ValueError(str(e))))(
+            res.or_else(lambda e: res.Err(int)(ValueError(str(e))))(
                 self.test_res
             ).inner,
             ValueError,
@@ -109,3 +109,12 @@ class TestDecorators(TestCase):
             .bind(res.qe)
             .bind(self.assertIsNotNone)
         )
+
+class TestOpt(TestCase):
+
+    def test_some(self):
+        self.assertIsInstance(res.some(None), res.Err)
+        self.assertIsInstance(res.some(10), res.Ok)
+    
+    def test_nil(self):
+        self.assertIsInstance(res.nil(int)(), res.Err, f'Actual type is {res.nil(int)()}')

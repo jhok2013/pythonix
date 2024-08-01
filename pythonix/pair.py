@@ -6,14 +6,14 @@ and mapping over a value.
 Example: ::
 
     >>> pair = new('foo')(None)
-    >>> pair = set_key('bar')(pair)
-    >>> pair = set_value(5)(pair)
+    >>> pair = key('bar')(pair)
+    >>> pair = value(5)(pair)
     >>> pair = map_value(lambda x: x + 5)(pair)
-    >>> get_value(pair)
+    >>> value(pair)
     10
-    >>> get_key(pair)
+    >>> key(pair)
     'bar'
-    >>> key, val = pair
+    >>> key, val = unpack(pair)
     >>> (key, val)
     ('bar', 10)
 

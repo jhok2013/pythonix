@@ -7,10 +7,10 @@ over values that include or do not include logs.
 Example: ::
 
         >>> add_ten = lambda x: x + 10
-        >>> t = new(info('Initial 10'))(10)
-        >>> t = blaze(add_ten, info('Added another ten'))(t)
-        >>> logs, val = t
-        >>> dt, message = logs[-1]
+        >>> t = new(Info('Initial 10'))(10)
+        >>> t = blaze(add_ten, Info('Added another ten'))(t)
+        >>> val, logs = unpack(t)
+        >>> message, dt = logs[-1]
         >>> message
         'Added another ten'
         >>> val
@@ -19,10 +19,10 @@ Example: ::
     You can also use functions that return a Trail, and blaze will handle
     the log concatenation. ::
 
-        >>> add_ten_trailer = trail(info('Adding ten with trail'))(add_ten)
+        >>> add_ten_trailer = on_start(Info('Adding ten with trail'))(add_ten)
         >>> t = blaze(add_ten_trailer)(t)
-        >>> logs, val = t
-        >>> dt, message = logs[-1]
+        >>> val, logs = unpack(t)
+        >>> message, dt = logs[-1]
         >>> message
         'Adding ten with trail'
         >>> val
@@ -39,8 +39,8 @@ from typing import (
     Generic,
     overload,
 )
-from dataclasses import dataclass
 from datetime import datetime, timezone
+from dataclasses import dataclass
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -48,70 +48,160 @@ U = TypeVar("U")
 
 
 class Log(NamedTuple):
-    """Immutable container for log messages.
+    """Parent immutable class for Log messages. Use its children.
 
-    Note:
-        Avoid creating this directly and use the `info`, `debug`, `warning`, `error`,
-        or `critical` functions instead.
+    Attributes:
+        message (str): The wrapped message
+        created_dt (datetime): The datetime for when the Log is created
+
     """
     message: str
     """The log message"""
+    created_dt: datetime = datetime.now(timezone.utc)
+    """The datetime in UTC when the Log is created"""
 
     def __str__(self) -> str:
         return f'{type(self).__name__}("{self.created_dt.strftime("%Y-%m-%dT%H:%M:%SZ")}", "{self.message}")'
 
 class Info(Log):
-    """Log object at the INFO severity"""
-    created_dt: datetime = datetime.now(timezone.utc)
+    """Log object at the INFO severity
+    
+    Attributes:
+        message (str): The wrapped message
+        created_dt (datetime): The datetime for when the Log is created
+    
+    ## Examples
+
+    >>> log = Info("Hello world")
+    >>> message, dt = log
+    >>> message
+    'Hello world'
+
+    """
+    ...
 
 class Debug(Log):
-    """Log object at the DEBUG severity"""
-    created_dt: datetime = datetime.now(timezone.utc)
+    """Log object at the DEBUG severity
+    
+    Attributes:
+        message (str): The wrapped message
+        created_dt (datetime): The datetime for when the Log is created
+
+    ## Examples
+
+    >>> log = Debug("Hello world")
+    >>> message, dt = log
+    >>> message
+    'Hello world'
+
+    """
+    ...
 
 
 class Warning(Log):
-    """Log object at the WARNING severity"""
-    created_dt: datetime = datetime.now(timezone.utc)
+    """Log object at the WARNING severity
+    
+    Attributes:
+        message (str): The wrapped message
+        created_dt (datetime): The datetime for when the Log is created
 
+    ## Examples
+
+    >>> log = Warning("Easy there")
+    >>> message, dt = log
+    >>> message
+    'Easy there'
+
+    """
+    ...
 
 class Error(Log):
-    """Log object at the ERROR severity"""
-    created_dt: datetime = datetime.now(timezone.utc)
+    """Log object at the ERROR severity
+    
+    Attributes:
+        message (str): The wrapped message
+        created_dt (datetime): The datetime for when the Log is created
 
+    ## Examples
+
+    >>> log = Error("Oops!")
+    >>> message, dt = log
+    >>> message
+    'Oops!'
+
+    """
+    ...
 
 class Critical(Log):
-    """Log object at the CRITICAL severity"""
-    created_dt: datetime = datetime.now(timezone.utc)
+    """Log object at the CRITICAL severity
+    
+    Attributes:
+        message (str): The wrapped message
+        created_dt (datetime): The datetime for when the Log is created
+
+    ## Examples
+
+    >>> log = Critical("Oh no!")
+    >>> message, dt = log
+    >>> message
+    'Oh no!'
+
+    """
+    ...
 
 
 L = TypeVar("L", bound="Log")
+"""Generic bound to all subclasses of Log, like Info, Debug, Error, Warning, and Critical"""
 
 @dataclass(frozen=True)
 class Trail(Generic[T]):
     """Container type used to wrap a value with a series of Log type records
 
-    Note:
-        Create this object with the ``new`` function.
+    Attributes:
+        inner (T): The wrapped value
+        logs (Tuple[L, ...]): A tuple full of Log messages
 
-    Examples: ::
+    ## Examples
 
-        >>> trailed: Trail[int] = Trail(10, Info('string'))
-        >>> val, logs = unpack(trailed)
-        >>> val
-        10
-        >>> log, *rest = logs
-        >>> mesage, dt = log
-        >>> message
-        'starting'
+    >>> trailed: Trail[int] = Trail(10, (Info('Starting'),))
+    >>> val, logs = unpack(trailed)
+    >>> val
+    10
+    >>> log, *_ = logs
+    >>> message, dt = log
+    >>> message
+    'Starting'
 
     """
 
     inner: T
+    """The wrapped value inside the Trail"""
     logs: Tuple[L, ...]
+    """The logs attached to the value"""
     __match_args__ = ('inner', 'logs')
 
 
 def new(*logs: L):
+    """Optional function used to create a Trail object
+
+    Args:
+        logs (Tuple[L, ...]): Args of any number of Log type objects 
+        inner (T): The wrapped value
+    
+    Returns:
+        trail (Trail[T]): A new Trail object with the wrapped value and logs
+    
+    ## Example
+
+    >>> trail: Trail[int] = new(Info("Starting process"), Debug("Starting process with value 10"))(10)
+    >>> inner, logs = unpack(trail)
+    >>> inner
+    10
+    >>> message, dt = logs[0]
+    >>> message
+    'Starting process'
+    
+    """
 
     def get_inner(inner: T) -> Trail[T]:
 
@@ -129,17 +219,25 @@ def unpack(trail: Trail[T]) -> Tuple[T, Tuple[L, ...]]:
 def append(*logs: L):
     """Append a new series of logs to a `Trail`
 
-    Example: ::
+    Args:
+        logs (Tuple[L, ...]): New logs to be appended to the Trail
+        trail (Trail[T]): Trail to receive the new logs
+    
+    Returns:
+        trail Trail[T]: The Trail with new logs attached
+    
+    ## Example
 
-        >>> t = Trail(10, Info('starting'))
-        >>> t = append(Info('ending'))(t)
-        >>> val, logs = unpack(t)
-        >>> len(logs)
-        2
+    >>> t = Trail(10, (Info("starting"),))
+    >>> t = append(Info('ending'))(t)
+    >>> val, logs = unpack(t)
+    >>> len(logs)
+    2
 
     """
 
     def inner(trail: Trail[T]) -> Trail[T]:
+        
         match trail:
             case Trail(inner, old_logs):
                 return Trail(inner, old_logs + logs)
@@ -148,13 +246,12 @@ def append(*logs: L):
 
     return inner
 
-
 def on_start(*logs: L):
     """Decorator to always attach certain logs to a Trail of the output
 
     Example: ::
 
-        >>> @trail(Info('Starting'))
+        >>> @on_start(Info('Starting'))
         ... def add_ten(x: int) -> int:
         ...     return x + 10
         ...
@@ -198,29 +295,29 @@ def blaze(
     Add in logs with blaze in addition to any logs already being added by
     the function.
 
-    Example: ::
+    ## Example 
 
-        >>> add_ten = lambda x: x + 10
-        >>> t = Trail(10, Info('Initial'))
-        >>> t = blaze(add_ten, Info('Added another ten'))(t)
-        >>> val, logs = unpack(t)
-        >>> message, dt = logs[-1]
-        >>> message
-        'Added another ten'
-        >>> val
-        20
+    >>> add_ten = lambda x: x + 10
+    >>> t = Trail(10, Info('Initial'))
+    >>> t = blaze(add_ten, Info('Added another ten'))(t)
+    >>> val, logs = unpack(t)
+    >>> message, dt = logs[-1]
+    >>> message
+    'Added another ten'
+    >>> val
+    20
 
     You can also use functions that return a Trail, and blaze will handle
-    the log concatenation. ::
+    the log concatenation.
 
-        >>> add_ten_trailer = trail(Info('Adding ten with trail'))(add_ten)
-        >>> t = blaze(add_ten_trailer)(t)
-        >>> val, logs = unpack(t)
-        >>> message, dt = logs[-1]
-        >>> message
-        'Adding ten with trail'
-        >>> val
-        30
+    >>> add_ten_trailer = on_start(Info('Adding ten with trail'))(add_ten)
+    >>> t = blaze(add_ten_trailer)(t)
+    >>> val, logs = unpack(t)
+    >>> message, dt = logs[-1]
+    >>> message
+    'Adding ten with trail'
+    >>> val
+    30
 
     """
 

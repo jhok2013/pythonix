@@ -7,10 +7,10 @@ over values that include or do not include logs.
 Example: ::
 
         >>> add_ten = lambda x: x + 10
-        >>> t = new(info('Initial 10'))(10)
-        >>> t = blaze(add_ten, info('Added another ten'))(t)
-        >>> logs, val = t
-        >>> dt, message = logs[-1]
+        >>> t = new(Info('Initial 10'))(10)
+        >>> t = blaze(add_ten, Info('Added another ten'))(t)
+        >>> val, logs = unpack(t)
+        >>> message, dt = logs[-1]
         >>> message
         'Added another ten'
         >>> val
@@ -19,10 +19,10 @@ Example: ::
     You can also use functions that return a Trail, and blaze will handle
     the log concatenation. ::
 
-        >>> add_ten_trailer = trail(info('Adding ten with trail'))(add_ten)
+        >>> add_ten_trailer = on_start(Info('Adding ten with trail'))(add_ten)
         >>> t = blaze(add_ten_trailer)(t)
-        >>> logs, val = t
-        >>> dt, message = logs[-1]
+        >>> val, logs = unpack(t)
+        >>> message, dt = logs[-1]
         >>> message
         'Adding ten with trail'
         >>> val

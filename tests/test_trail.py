@@ -39,3 +39,8 @@ class TestTrail(TestCase):
         *_, last = logs
         self.assertEqual(inner, '35')
         self.assertEqual('Done', last.message)
+
+    def test_logs(self):
+
+        log = t.Info("Hello world")
+        message, *_ = log
