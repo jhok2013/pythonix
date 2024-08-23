@@ -39,16 +39,12 @@ import pythonix.res as res
 import pythonix.trail as trail
 import pythonix.op as op
 import pythonix.jsn as jsn
-import pythonix.req as req
+# import pythonix.req as req
 import pythonix.curry as curry
-import pythonix.tup as tup
-import pythonix.dict_utils as dict_utils
+import pythonix.collections as collections
 import pythonix.grammar as grammar
 import pythonix.prove as prove
-import pythonix.deq as deq
 import pythonix.either as either
-import pythonix.shortcuts as shortcuts
 from pythonix.grammar import P, Piper
 from pythonix.fn import fn
 from pythonix.res import Ok, Err, Nil, Res, Opt
-from pythonix.shortcuts import unwrap, unpack, q, u

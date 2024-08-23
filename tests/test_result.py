@@ -6,115 +6,109 @@ from pythonix.internals.res import safe
 
 class TestOk(TestCase):
     def setUp(self) -> None:
-        self.test_res = res.Ok(Exception)(5)
+        self.test_res = res.Ok.new_pair(5, Exception)
         return super().setUp()
+    
+    def test_dos(self):
+        self.assertEqual(self.test_res.do(lambda _: "hello").unwrap(), 5, f"{self.test_res}")
+        self.assertEqual(self.test_res.do_other(lambda _: TypeError()).unwrap(), 5)
 
     def test_is_funcs(self) -> None:
-        self.assertTrue(res.is_ok(self.test_res))
-        self.assertFalse(res.is_err(self.test_res))
-        self.assertTrue(res.is_ok_and(lambda _: True)(self.test_res))
-        self.assertFalse(res.is_ok_and(lambda _: False)(self.test_res))
-        self.assertFalse(res.is_err_and(lambda _: True)(self.test_res))
+        self.assertTrue(self.test_res.is_not_other())
+        self.assertFalse(self.test_res.is_other())
+        self.assertTrue(self.test_res.is_not_other_and(lambda _: True))
+        self.assertFalse(self.test_res.is_not_other_and(lambda _: False))
+        self.assertFalse(self.test_res.is_other_and(lambda _: True))
 
     def test_unwrap_funcs(self) -> None:
-        self.assertEqual(res.unwrap(self.test_res), 5)
-        self.assertEqual(res.unwrap_or(0)(self.test_res), 5)
-        self.assertEqual(res.unwrap_or_else(lambda: 0)(self.test_res), 5)
+        self.assertEqual(self.test_res.unwrap(), 5)
+        self.assertEqual(self.test_res.unwrap_or(0), 5)
+        self.assertEqual(self.test_res.unwrap_or(0), 5)
+        self.assertEqual(self.test_res.unwrap_or_else(lambda: 0), 5)
         with self.assertRaises(ValueError):
-            res.unwrap_err(self.test_res)
+            self.test_res.unwrap_other()
 
     def test_map_funcs(self) -> None:
-        self.assertEqual(res.map(lambda x: x + 1)(self.test_res).inner, 6)
-        self.assertEqual(res.map_or(lambda x: x + 1)(0)(self.test_res).inner, 6)
+        self.assertEqual(self.test_res.map(lambda x: x + 1).inner, 6)
+        self.assertEqual(self.test_res.map_or(lambda x: x + 1, 0).inner, 6)
         self.assertEqual(
-            res.map_or_else(lambda x: x + 1)(lambda: 0)(self.test_res).inner, 6
+            self.test_res.map_or_else(lambda x: x + 1, lambda: 0).inner, 6
         )
         self.assertEqual(
-            res.map_err(lambda e: ValueError(str(e)))(self.test_res).inner, 5
+            self.test_res.map_other(lambda e: ValueError(str(e))).inner, 5
         )
 
     def test_and_funcs(self) -> None:
-        self.assertEqual(
-            res.and_then(lambda x: res.Ok(Exception)(x + 5))(self.test_res).inner, 10
-        )
-        self.assertEqual(res.and_res(res.Ok(Exception)(10))(self.test_res).inner, 10)
+        self.assertEqual(self.test_res.and_then(lambda x: res.Ok.new_pair(x + 5, Exception)).inner, 10)
+        self.assertEqual(self.test_res.and_(res.Ok.new_pair(10, Exception)).inner, 10)
 
     def test_or_funcs(self) -> None:
-        self.assertEqual(res.or_else(lambda e: 10)(self.test_res).inner, 5)
-        self.assertEqual(res.or_res(res.Err(int)(ValueError))(self.test_res).inner, 5)
+        self.assertEqual(self.test_res.or_else(lambda e: 10).inner, 5)
+        self.assertEqual(self.test_res.or_(res.Err.new_pair(ValueError(), int)).inner, 5)
 
 
 class TestErr(TestCase):
+    # TODO: Finish updating tests
     def setUp(self) -> None:
-        self.test_res = res.Err(int)(Exception())
+        self.test_res = res.Err.new_pair(Exception(), int)
 
     def test_is_funcs(self) -> None:
-        self.assertTrue(res.is_err(self.test_res))
-        self.assertFalse(res.is_ok(self.test_res))
+        self.assertTrue(self.test_res.is_other())
+        self.assertFalse(self.test_res.is_not_other())
 
     def test_unwrap_funcs(self) -> None:
         with self.assertRaises(Exception):
-            res.unwrap(self.test_res)
-        self.assertEqual(res.unwrap_or(0)(self.test_res), 0)
-        self.assertEqual(res.unwrap_or_else(lambda: 0)(self.test_res), 0)
-        self.assertIsInstance(res.unwrap_err(self.test_res), Exception)
+            self.test_res.unwrap()
+        self.assertEqual(self.test_res.unwrap_or(0), 0)
+        self.assertEqual(self.test_res.unwrap_or_else(lambda e: 0), 0)
+        self.assertIsInstance(self.test_res.unwrap_other(), Exception)
 
     def test_map_funcs(self) -> None:
-        self.assertIsInstance(res.map(lambda x: x + 1)(self.test_res).inner, Exception)
-        self.assertEqual(res.map_or(lambda x: x + 1)(0)(self.test_res).inner, 0)
+        self.assertIsInstance(self.test_res.map(lambda x: x + 1).unwrap_other(), Exception)
+        self.assertEqual(self.test_res.map_or(lambda x: x + 1, 0).inner, 0)
         self.assertEqual(
-            res.map_or_else(lambda x: x + 1)(lambda: 0)(self.test_res).inner, 0
+            self.test_res.map_or_else(lambda x: x + 1, lambda: 0).inner, 0
         )
 
     def test_and_funcs(self) -> None:
         self.assertIsInstance(
-            res.and_then(lambda x: res.Ok(x + 5)(Exception))(self.test_res).inner,
+            self.test_res.and_then(lambda x: res.Ok.new_pair(x + 5, Exception)).inner,
             Exception,
         )
         self.assertIsInstance(
-            res.and_res(res.Ok(10)(Exception))(self.test_res).inner, Exception
+            self.test_res.and_(res.Ok.new_pair(10, Exception)).inner, Exception
         )
 
     def test_or_funcs(self) -> None:
         self.assertIsInstance(
-            res.or_res(res.Err(int)(ValueError()))(self.test_res).inner, ValueError
+            self.test_res.or_(res.Err.new_pair(ValueError(), int)).inner, ValueError
         )
         self.assertIsInstance(
-            res.or_else(lambda e: res.Err(int)(ValueError(str(e))))(
-                self.test_res
-            ).inner,
-            ValueError,
+            self.test_res.or_else(lambda e: Err.new_pair(ValueError(str(e)), int)).inner,
+            ValueError
         )
+    
+    def test_dos(self):
+        self.assertIsInstance(self.test_res.do(lambda _: "hello").unwrap_other(), Exception)
+        self.assertIsInstance(self.test_res.do_other(lambda _: TypeError()).unwrap_other(), Exception)
 
 
 class TestDecorators(TestCase):
     def test_safe(self) -> None:
         op: Callable[[str], str] = lambda x: x
         proto_op = safe(TypeError, AttributeError)(op)
-        (
-            Piper("hello")
-            .bind(proto_op)
-            .bind(res.q)
-            .bind(lambda s: self.assertEqual(s, "hello"))
-        )
+        self.assertEqual("hello", proto_op("hello").unwrap())
 
     def test_safe_fail(self) -> None:
         @safe(TypeError)
         def will_throw_type_error(_):
             raise TypeError("Failed successfully")
-
-        (
-            Piper(None)
-            .bind(will_throw_type_error)
-            .bind(res.qe)
-            .bind(self.assertIsNotNone)
-        )
+        
+        self.assertIsInstance(will_throw_type_error(None).unwrap_err(), TypeError)
 
 class TestOpt(TestCase):
 
     def test_some(self):
-        self.assertIsInstance(res.some(None), res.Err)
-        self.assertIsInstance(res.some(10), res.Ok)
+        self.assertIsInstance(res.Ok(None).some(), res.Err)
+        self.assertIsInstance(res.Ok(10).some(), res.Ok)
     
-    def test_nil(self):
-        self.assertIsInstance(res.nil(int)(), res.Err, f'Actual type is {res.nil(int)()}')

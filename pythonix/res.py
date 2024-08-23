@@ -33,37 +33,15 @@ Examples:
 And much, much more. Everything has its own documentation so check it out.
     
 """
-from pythonix.internals.res import (
-    and_res,
-    and_then,
-    flatten,
-    is_err,
-    is_err_and,
-    is_ok,
-    is_ok_and,
-    map,
-    map_err,
-    map_or,
-    unpack,
-    map_or_else,
-    null_safe,
-    or_else,
-    safe,
-    map_err,
-    unwrap,
-    some,
+from pythonix.internals.choices import (
     Res,
     Opt,
-    nil,
     Nil,
-    or_res,
-    unwrap_err,
-    unwrap_or,
-    unwrap_or_else,
     Ok,
     Err,
     null_and_error_safe,
-    q,
-    qe,
     combine_errors,
+    safe,
+    null_safe,
+    unpack
 )

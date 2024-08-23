@@ -5,12 +5,12 @@ class TestJSON(TestCase):
 
     def test_encode(self):
 
-        encoded = q(jsn.encode(**jsn.pretty())({"hello": "world"}))
+        encoded = jsn.encode(**jsn.pretty())({"hello": "world"}).q
         self.assertIsInstance(encoded, str)
     
     def test_decode(self):
 
-        decoded: dict[str, str] = unwrap(jsn.decode(dict)('{"hello": "world"}'))
-        value = unwrap(dict_utils.get('hello')(decoded))
-        self.assertEqual(value, 'world')
+        res = jsn.decode(dict)('{"hello": "world"}').q
+        val = res.get("hello")
+        self.assertEqual(val, "world") 
 

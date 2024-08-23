@@ -26,12 +26,13 @@ Examples:
         3
     
 """
-from typing import Callable, Iterable, cast, Iterator, TypeVar, Mapping, Sequence
+from typing import Callable, Iterable, cast, Iterator, TypeVar, Mapping, Sequence, ParamSpec
 from functools import reduce
-from pythonix.internals.res import null_and_error_safe, safe, unpack, Ok, Err, Nil
+from pythonix.internals.res import null_and_error_safe, Ok, Err, Nil
 from pythonix.internals.curry import two, three
 
 
+P = ParamSpec('P')
 T = TypeVar("T")
 S = TypeVar("S")
 U = TypeVar("U")

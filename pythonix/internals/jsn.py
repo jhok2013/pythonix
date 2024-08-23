@@ -103,12 +103,12 @@ def encode(**options):
         try:
             if writable := hasattr(encodeable_obj, "write"):
                 dump(encodeable_obj, **options)
-                return Ok(JSONError)(encodeable_obj)
-            return Ok(JSONError)(dumps(encodeable_obj, **options))
+                return Ok(encodeable_obj)
+            return Ok(dumps(encodeable_obj, **options))
         except (ValueError, TypeError) as e:
             if writable:
-                return Err(SupportsWrite[str])(JSONError(str(e)))
-            return Err(str)(JSONError(str(e)))
+                return Err(JSONError(str(e)))
+            return Err(JSONError(str(e)))
 
     return get_obj
 
@@ -150,9 +150,9 @@ def decode(expected_type: type[DecodableT] = dict, options: DecodeOpts = DecodeO
             if not isinstance(
                 decoded := method(decodable_json, **options), expected_type
             ):
-                return Err(DecodableT)(JSONError(f"Expected to decode {type(expected_type)} but found {type(decoded)}"))
-            return Ok(JSONError)(decoded)
+                return Err(JSONError(f"Expected to decode {type(expected_type)} but found {type(decoded)}"))
+            return Ok(decoded)
         except (ValueError, TypeError, JSONDecodeError) as e:
-            return Err(DecodableT)(JSONError(str(e)))
+            return Err(JSONError(str(e)))
 
     return get_obj

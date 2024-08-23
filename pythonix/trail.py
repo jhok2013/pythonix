@@ -29,17 +29,17 @@ Example: ::
         30
 
 """
-from pythonix.internals.trail import (
-    new,
+from pythonix.internals.trail.src import (
     Trail,
-    on_start,
-    blaze,
     Log,
-    append,
-    unpack,
-    unwrap,
     Info,
     Critical,
+    Warning,
     Debug,
-    Error
+    Error,
+)
+from pythonix.internals.trail.decorators import (
+    start,
+    then_log,
+    then_log_top
 )

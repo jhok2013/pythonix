@@ -1,8 +1,6 @@
-from pythonix.internals.either import (
+from pythonix.internals.choices import (
     Either,
     Left,
     Right,
-    unwrap,
-    map,
     unpack
 )
