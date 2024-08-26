@@ -41,7 +41,7 @@ from pythonix.internals.res import (
     Ok,
     Err,
     Some,
-    Nil,
+    NoneError,
     Opt,
     null_and_error_safe,
     combine_errors,
