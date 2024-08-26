@@ -29,7 +29,7 @@ Example: ::
         30
 
 """
-from pythonix.internals.trail.src import (
+from pythonix.internals.trail.trail import (
     Trail,
     Log,
     Info,

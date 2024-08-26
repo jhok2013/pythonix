@@ -33,15 +33,18 @@ Examples:
 And much, much more. Everything has its own documentation so check it out.
     
 """
-from pythonix.internals.choices import (
+from pythonix.internals.res import (
     Res,
-    Opt,
-    Nil,
+    NoneError,
+    UnwrapError,
+    ExpectError,
     Ok,
     Err,
+    Some,
+    Nil,
+    Opt,
     null_and_error_safe,
     combine_errors,
     safe,
     null_safe,
-    unpack
 )

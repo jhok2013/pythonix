@@ -1,5 +1,5 @@
 from typing import TypeVar, Callable, ParamSpec
-from pythonix.internals.trail.src import Trail, Log
+from pythonix.internals.trail.trail import Trail, Log
 P = ParamSpec("P")
 T = TypeVar("T")
 U = TypeVar("U")

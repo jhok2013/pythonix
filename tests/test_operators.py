@@ -21,15 +21,15 @@ class TestShiftOps(TestCase):
         self.assertEqual(actual, expected)
     
     def test_apply_prefix_res(self) -> None:
-        in_arg = res.Ok.new_pair(10, Exception)
+        in_arg = res.Ok(10, Exception)
         prefix = ShiftApplyPrefix(in_arg)
         actual = prefix >> fn(res.Res[int, Exception], res.Res[str, Exception])(
             lambda r: r.map(str)
         )  # res.map(fn(int, str)(lambda x: str(x)))
         match actual:
-            case res.Ok(inner):
+            case res.Res(str(inner)):
                 self.assertEqual(inner, '10')
-            case res.Err(e):
+            case res.Res(Exception(e)):
                 self.fail(str(e))
     
     def test_apply_prefix(self) -> None:

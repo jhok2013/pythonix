@@ -14,7 +14,7 @@ Examples: ::
 """
 from typing import Iterable, TypeVar, Callable
 from pythonix.internals.curry import two
-from pythonix.internals.res import safe, unpack
+from pythonix.internals.res import safe
 
 T = TypeVar("T")
 U = TypeVar("U")

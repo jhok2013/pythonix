@@ -28,7 +28,7 @@ Examples:
 """
 from typing import Callable, Iterable, cast, Iterator, TypeVar, Mapping, Sequence, ParamSpec
 from functools import reduce
-from pythonix.internals.res import null_and_error_safe, Ok, Err, Nil
+from pythonix.internals.res import null_and_error_safe, Res, NoneError, Opt
 from pythonix.internals.curry import two, three
 
 
@@ -117,7 +117,7 @@ def fold(using: Callable[[T, T], T], iterable: Iterable[T]) -> T:
 
 
 @three
-def attr(attr_type: type[U], name: str, obj: O) -> U:
+def attr(attr_type: type[U], name: str, obj: O) -> Opt[U]:
     """Used to safely retrieve attributes from classes in a functional way.
 
     Args:
@@ -143,13 +143,9 @@ def attr(attr_type: type[U], name: str, obj: O) -> U:
 
     """
     try:
-        match getattr(obj, name):
-            case val if val is not None:
-                return Ok(Nil)(getattr(obj, name))
-            case val if val is None:
-                return Err(U)(Nil(str(e)))
+        return Res.Some(getattr(obj, name))
     except AttributeError as e:
-        return Err(U)(Nil(str(e)))
+        return Res.Nil(U, str(e))
 
 
 @two

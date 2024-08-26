@@ -62,7 +62,7 @@ class TestTrail(TestCase):
         self.assertEqual(self.t.inner, 20)
     
     def test_map_with_res(self):
-        res = Ok.new_pair(10, ValueError)
+        res = Ok(10, ValueError)
         self.t = Trail(res, [Info("Received result")])
         self.t = (
             self.t

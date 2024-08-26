@@ -13,7 +13,7 @@ from typing import (
 from typing_extensions import Self
 from collections import deque
 from dataclasses import dataclass
-from pythonix.internals.choices import Opt, Err, Ok, Nil, Res
+from pythonix.internals.res import Opt, Res, NoneError
 
 
 _KT = TypeVar("_KT")
@@ -73,9 +73,9 @@ class Deq(deque[T]):
 
     def __getitem__(self, key: SupportsIndex) -> Opt[T]:
         try:
-            return Ok(super().__getitem__(key)).some()
+            return Res.Some(super().__getitem__(key))
         except (IndexError, KeyError) as e:
-            return Err(Nil(str(e)))
+            return Res.Nil(T, str(e))
 
     def get(self, index: int) -> Opt[T]:
         """Retrieves a value as an `Opt[T]` at a given index
@@ -165,9 +165,9 @@ class Deq(deque[T]):
             Opt[T]: The expected element wrapped in an `Opt`
         """
         try:
-            return Ok(super().pop()).some()
+            return Res.Some(super().pop())
         except IndexError as e:
-            return Err(Nil("Deq is empty"))
+            return Res.Nil(T, str(e))
 
     def popleft(self) -> Opt[T]:
         """Returns and removes the left most element of the Deq as an `Opt`
@@ -176,9 +176,9 @@ class Deq(deque[T]):
             Opt[T]: The left most element of the Deq in an `Opt`
         """
         try:
-            return Ok(super().popleft()).some()
+            return Res.Some(super().popleft())
         except IndexError as e:
-            return Err(Nil("Deq is empty"))
+            return Res.Nil(T, str(e))
 
     def remove(self, value: T) -> Res[Deq[T], ValueError]:
         """Removes the element with the provided value
@@ -187,13 +187,13 @@ class Deq(deque[T]):
             value (T): The value to remove
 
         Returns:
-            Res[Deq[T], IndexError]: A result containing the Deq without the element
+            Res[Deq[T], ValueError]: A result containing the Deq without the element
         """
         try:
             super().remove(value)
-            return Ok(self)
+            return Res.Ok(self, ValueError)
         except ValueError as e:
-            return Err(e)
+            return Res.Err(e, Deq[T])
 
     def reverse(self) -> Deq[T]:
         """Reverses the order of the Deq
@@ -250,9 +250,9 @@ class Deq(deque[T]):
             Opt[int]: The index of the value, or Nil
         """
         try:
-            return Ok(super().index(x, start, stop))
+            return Res.Some(super().index(x, start, stop))
         except ValueError as e:
-            return Err(Nil(str(e)))
+            return Res.Nil(T, str(e))
 
     @property
     def maxlen(self) -> Opt[int]:
@@ -261,7 +261,7 @@ class Deq(deque[T]):
         Returns:
             Opt[int]: Maximum capactity, else Nil
         """
-        return Ok(super().maxlen).some()
+        return Res.Some(super().maxlen)
 
 
 class DictPlus(dict[K, V]):
@@ -292,9 +292,9 @@ class DictPlus(dict[K, V]):
 
     def __getitem__(self, key: K) -> Opt[V]:
         try:
-            return Ok(super().__getitem__(key)).some()
+            return Res.Some(super().__getitem__(key))
         except (KeyError, IndexError) as e:
-            return Err(Nil(str(e)))
+            return Res.Nil(V, str(e))
 
     def get(self, key: K) -> Opt[V]:
         """Retrieves a value if key exists, else Nil
@@ -317,9 +317,9 @@ class DictPlus(dict[K, V]):
             Opt[V]: The desired item wrapped in an `Opt`
         """
         try:
-            return Ok(super().pop(key)).some()
+            return Res.Some(super().pop(key))
         except (KeyError, IndexError) as e:
-            return Err(Nil(str(e)))
+            return Res.Nil(T, str(e))
 
     def popitem(self) -> Opt[Tuple[K | V]]:
         """Removes and returns the farthest right key value tuple
@@ -328,9 +328,9 @@ class DictPlus(dict[K, V]):
             Opt[Tuple[K | V]]: The farthest right key value tuple or Nil
         """
         try:
-            return Ok(super().popitem()).some()
+            return Res.Some(super().popitem())
         except (KeyError, IndexError) as e:
-            return Err(Nil(str(e)))
+            return Res.Nil(T, str(e))
 
     @overload
     def update(

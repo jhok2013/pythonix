@@ -16,7 +16,7 @@ To decode a value from JSON use `decode` ::
 """
 from json import JSONDecodeError, JSONDecoder, JSONEncoder, load, loads, dump, dumps
 from typing import overload, Callable, TypeVar, Any, TypedDict, Protocol, Generic, cast
-from pythonix.res import Res, Ok, Err
+from pythonix.res import Res
 
 T = TypeVar('T')
 
@@ -103,12 +103,12 @@ def encode(**options):
         try:
             if writable := hasattr(encodeable_obj, "write"):
                 dump(encodeable_obj, **options)
-                return Ok(encodeable_obj)
-            return Ok(dumps(encodeable_obj, **options))
+                return Res.Ok(encodeable_obj, JSONError)
+            return Res.Ok(dumps(encodeable_obj, **options), JSONError)
         except (ValueError, TypeError) as e:
             if writable:
-                return Err(JSONError(str(e)))
-            return Err(JSONError(str(e)))
+                return Res.Err(JSONError(str(e)), SupportsWrite[str])
+            return Res.Err(JSONError(str(e)), str)
 
     return get_obj
 
@@ -150,9 +150,9 @@ def decode(expected_type: type[DecodableT] = dict, options: DecodeOpts = DecodeO
             if not isinstance(
                 decoded := method(decodable_json, **options), expected_type
             ):
-                return Err(JSONError(f"Expected to decode {type(expected_type)} but found {type(decoded)}"))
-            return Ok(decoded)
+                return Res.Err(JSONError(f"Expected to decode {type(expected_type)} but found {type(decoded)}"), DecodableT)
+            return Res.Ok(decoded, JSONError)
         except (ValueError, TypeError, JSONDecodeError) as e:
-            return Err(JSONError(str(e)))
+            return Res.Err(JSONError(str(e)), DecodableT)
 
     return get_obj
