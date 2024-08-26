@@ -49,7 +49,7 @@ class Info(Log):
     ## Examples
 
     >>> log = Info("Hello world")
-    >>> message, dt = log
+    >>> message, dt = log.to_tuple()
     >>> message
     'Hello world'
 
@@ -66,7 +66,7 @@ class Debug(Log):
     ## Examples
 
     >>> log = Debug("Hello world")
-    >>> message, dt = log
+    >>> message, dt = log.to_tuple()
     >>> message
     'Hello world'
 
@@ -84,7 +84,7 @@ class Warning(Log):
     ## Examples
 
     >>> log = Warning("Easy there")
-    >>> message, dt = log
+    >>> message, dt = log.to_tuple()
     >>> message
     'Easy there'
 
@@ -102,7 +102,7 @@ class Error(Log):
     ## Examples
 
     >>> log = Error("Oops!")
-    >>> message, dt = log
+    >>> message, dt = log.to_tuple()
     >>> message
     'Oops!'
 
@@ -119,7 +119,7 @@ class Critical(Log):
     ## Examples
 
     >>> log = Critical("Oh no!")
-    >>> message, dt = log
+    >>> message, dt = log.to_tuple()
     >>> message
     'Oh no!'
 
@@ -149,6 +149,17 @@ class Trail(Generic[T]):
 
         Returns:
             Tuple[T, list[L]]: Data packed as a tuple
+        
+        ## Examples
+
+        >>> trail = Trail(10, [Info("Starting")])
+        >>> val, logs = trail.to_tuple()
+        >>> val
+        10
+        >>> log, *_ = logs
+        >>> log.message
+        'Starting'
+
         """
         return self.inner, self.logs
     
@@ -160,6 +171,14 @@ class Trail(Generic[T]):
 
         Returns:
             Trail[U]: A reference to the new Trail
+        
+        ## Examples
+
+        >>> trail = Trail(10, [Info("Starting")])
+        >>> trail = trail.map(lambda x: x + 10, Info("Added 10")).map(lambda x: x + 5, Info("Added 5"))
+        >>> trail.logs[-1].message
+        'Added 5'
+
         """
         self.logs.extend(logs)
         return Trail(op(self.inner), self.logs.copy())
@@ -172,6 +191,16 @@ class Trail(Generic[T]):
 
         Returns:
             Trail[U]: Updated version of the Trail
+        
+        ## Examples
+
+        >>> trail = Trail(10, [Info("Starting")])
+        >>> add_ten = lambda x : Trail(x + 10, [Info("Added 10")])
+        >>> add_5 = lambda x: Trail(x + 5, [Info("Added 5")])
+        >>> trail = trail.and_then(add_ten).and_then(add_5)
+        >>> trail.logs[-1].message
+        'Added 5'
+
         """
         new = op(self.inner)
         self.logs.extend(new.logs)

@@ -62,6 +62,7 @@ class TestErr(TestCase):
         self.assertEqual(self.test_res.unwrap_or(0), 0)
         self.assertEqual(self.test_res.unwrap_or_else(lambda: 0), 0)
         self.assertIsInstance(self.test_res.unwrap_err(), Exception)
+        e = self.test_res.unwrap_err()
 
     def test_map_funcs(self) -> None:
         self.assertIsInstance(self.test_res.map(lambda x: x + 1).unwrap_err(), Exception)

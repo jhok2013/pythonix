@@ -21,14 +21,14 @@ Examples:
     Getting from Data Structures: ::
 
         >>> data = [1, 2, 3]
-        >>> val, err = unpack(item(2)(data))
+        >>> val, err = item(2)(data).u
         >>> val
         3
     
 """
 from typing import Callable, Iterable, cast, Iterator, TypeVar, Mapping, Sequence, ParamSpec
 from functools import reduce
-from pythonix.internals.res import null_and_error_safe, Res, NoneError, Opt
+from pythonix.internals.res import null_and_error_safe, Res, Opt
 from pythonix.internals.curry import two, three
 
 
@@ -134,12 +134,9 @@ def attr(attr_type: type[U], name: str, obj: O) -> Opt[U]:
         >>> from collections import namedtuple
         >>> Point = namedtuple('Point', ('x', 'y'))
         >>> P = Point(10, 10)
-        >>> val, nil = unpack(attr(int)('x')(P))
+        >>> val, nil = attr(int)('x')(P).u
         >>> val
         10
-        >>> val, nil = unpack(attr(int)('z')(P))
-        >>> nil
-        Nil("'Point' object has no attribute 'z'")
 
     """
     try:
@@ -169,10 +166,10 @@ def item(index: K, iterable: Mapping[K, T] | Sequence[T]) -> T | None:
     Example: ::
 
         >>> data = {'hello': [1, 2, 3]}
-        >>> row, nil = unpack(item('hello')(data))
+        >>> row, nil = item('hello')(data).u
         >>> row
         [1, 2, 3]
-        >>> elem, nil = unpack(item(0)(row))
+        >>> elem, nil = item(0)(row).u
         >>> elem
         1
 

@@ -46,4 +46,4 @@ import pythonix.grammar as grammar
 import pythonix.prove as prove
 from pythonix.grammar import P, Piper
 from pythonix.fn import fn
-from pythonix.res import Ok, Err, NoneError, Res, Opt
+from pythonix.res import Ok, Err, Nil, Res, Opt

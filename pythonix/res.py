@@ -35,7 +35,7 @@ And much, much more. Everything has its own documentation so check it out.
 """
 from pythonix.internals.res import (
     Res,
-    NoneError,
+    Nil,
     UnwrapError,
     ExpectError,
     Ok,

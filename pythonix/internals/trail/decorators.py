@@ -1,5 +1,5 @@
 from typing import TypeVar, Callable, ParamSpec
-from pythonix.internals.trail.trail import Trail, Log
+from pythonix.internals.trail.trail import Trail, Log, Info
 P = ParamSpec("P")
 T = TypeVar("T")
 U = TypeVar("U")
@@ -12,17 +12,16 @@ def start(*logs: L):
     then use the `then` themed decorators. If using `Res`, make sure that the
     `Trail` is wrapped in `Ok`, instead of having the `Trail` wrap `Ok`.
 
-    ### Example
+    ## Example
 
-        
-        >>> @then_log(Info("Ending"))
-        >>> @start(Info("Starting"))
-        >>> def hello() -> str:
-        ...     return 'Hello world!'
-        ...
-        >>> greeting: Trail[str] = hello()
-        >>> greeting.logs.pop().message
-        'Ending'
+    >>> def hello() -> str:
+    ...     return 'Hello world!'
+    ...
+    >>> hello = start(Info("Starting"))(hello)
+    >>> hello = then_log(Info("Ending"))(hello)
+    >>> greeting: Trail[str] = hello()
+    >>> greeting.logs.pop().message
+    'Ending'
 
     """
     

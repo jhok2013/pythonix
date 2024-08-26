@@ -64,7 +64,6 @@ from pythonix.internals.curry import two
 S = TypeVar("S")
 T = TypeVar("T")
 U = TypeVar("U")
-E = TypeVar("E", bound="Exception")
 
 
 class PipeSuffix(Generic[T, U], object):

@@ -13,7 +13,7 @@ from typing import (
 from typing_extensions import Self
 from collections import deque
 from dataclasses import dataclass
-from pythonix.internals.res import Opt, Res, NoneError
+from pythonix.internals.res import Opt, Res
 
 
 _KT = TypeVar("_KT")

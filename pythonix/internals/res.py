@@ -52,7 +52,7 @@ class Res(Generic[T, E], object):
         if self.is_err:
             return f"Err(inner={self.inner})"
         if isinstance(self.inner, str):
-            return f'Ok(inner="{self.inner}")'
+            return f"Ok(inner='{self.inner}')"
         return f"Ok(inner={self.inner})"
 
     @property
@@ -108,9 +108,13 @@ class Res(Generic[T, E], object):
         >>> err: Res[int, ValueError] = Res.Err(ValueError(), int)
         >>> err.is_err
         True
-        >>> err.is_false
+        >>> err.is_ok
         False
-        >>> Res.Err("Not an Exception", int)
+        >>> try:
+        ...     Res.Err("Not an Exception", int)
+        ... except TypeError as e:
+        ...     e
+        ...
         TypeError("Expected subclass of Exception but found str") 
 
         """
@@ -121,8 +125,8 @@ class Res(Generic[T, E], object):
         object.__setattr__(obj, '_is_err', True)
         return obj
     
-    @classmethod
-    def Some(cls, value: U | None) -> Opt[U]:
+    @staticmethod
+    def Some(value: U | None) -> Opt[U]:
         """Creates an `Opt[U]`, checking for None
 
         Args:
@@ -148,8 +152,8 @@ class Res(Generic[T, E], object):
             return Res.Err(NoneError(), U)
         return Res.Ok(value, NoneError)
     
-    @classmethod
-    def Nil(cls, some_type: type[U], nil_message: str | None = None) -> Opt[U]:
+    @staticmethod
+    def Nil(some_type: type[U], nil_message: str | None = None) -> Opt[U]:
         """Creates an `Opt[U]` in an Err state with Nil
 
         Args:
@@ -163,7 +167,7 @@ class Res(Generic[T, E], object):
 
         >>> nil: Opt[int] = Res.Nil(int, "Nothing was found")
         >>> nil.unwrap_err()
-        Nil("Nothing was found")
+        NoneError("Nothing was found")
 
         """
         if nil_message is not None:
@@ -188,9 +192,9 @@ class Res(Generic[T, E], object):
         """
         match self.is_err:
             case True:
-                return self.inner, None
-            case False:
                 return None, self.inner
+            case False:
+                return self.inner, None
     
     def some(self) -> Opt[T]:
         """Converts the `Res` to an `Opt`, consuming the `E` value
@@ -313,7 +317,7 @@ class Res(Generic[T, E], object):
         UnwrapError("Unwrapped while in an Err state")
 
         """
-        if not self.is_err:
+        if self.is_ok:
             return self.inner
         raise UnwrapError()
     
@@ -330,15 +334,15 @@ class Res(Generic[T, E], object):
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
         >>> ok.unwrap_err()
-        UnwrapError("Unwrapped Err while in Ok state")
+        UnwrapError('Unwrapped Err while in Ok state')
         >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
         >>> err.unwrap_err()
-        Exception("foo")
+        Exception('foo')
         
         """
         if self.is_err:
             return self.inner
-        raise UnwrapError("Unwrapped Err while in Ok state")
+        raise UnwrapError('Unwrapped Err while in Ok state')
     
     def unwrap_or(self, default: T) -> T:
         """Returns wrapped value or default
@@ -355,7 +359,7 @@ class Res(Generic[T, E], object):
         >>> ok.unwrap_or(0)
         10
         >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
-        >>> err.unwrap(0)
+        >>> err.unwrap_or(0)
         0
 
         """
@@ -540,7 +544,7 @@ class Res(Generic[T, E], object):
         20
         >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
         >>> ok.replace_err(ValueError("bar")).unwrap_err()
-        ValueError("bar")
+        ValueError('bar')
 
         """
 
@@ -807,7 +811,7 @@ class Res(Generic[T, E], object):
         >>> val
         None
         >>> err
-        Exception("foo")
+        Exception('foo')
 
         """
         return self.unpack()
@@ -854,7 +858,7 @@ def Err(value: E, ok_type: type[T]) -> Res[T, E]:
         >>> err: Res[int, ValueError] = Res.Err(ValueError(), int)
         >>> err.is_err
         True
-        >>> err.is_false
+        >>> err.is_ok
         False
         >>> Res.Err("Not an Exception", int)
         TypeError("Expected subclass of Exception but found str") 
@@ -896,12 +900,6 @@ def Nil(some_type: type[T], nil_message: str | None = None) -> Opt[T]:
         Returns:
             Opt[T]: A new Opt
         
-        ## Examples
-
-        >>> nil: Opt[int] = Res.Nil(int, "Nothing was found")
-        >>> nil.unwrap_err()
-        Nil("Nothing was found")
-
     """
     return Res.Nil(some_type, nil_message)
 
@@ -930,10 +928,10 @@ def safe(*err_type: type[E]):
     ...
     >>> data: dict[str, str] = {'hello': 'world'}
     >>> element: Res[str, KeyError] = access(data, 'hello')
-    >>> unwrap(element)
+    >>> element.unwrap()
     'world'
     >>> bad_element: Res[str, KeyError] = access(data, 'hola')
-    >>> unwrap_err(bad_element)
+    >>> bad_element.unwrap_err()
     KeyError('hola')
 
     """
@@ -968,7 +966,7 @@ def null_safe(using: Callable[P, U | None]):
         ...
         >>> data: dict[str, str] = {'hello': 'world'}
         >>> maybe: Opt[str] = get('hello', data)
-        >>> unwrap(maybe)
+        >>> maybe.unwrap()
         'world'
 
     """
@@ -998,7 +996,7 @@ def null_and_error_safe(*err_types: type[E]):
         ...
         >>> data: dict[str, str] = {'hello': 'world'}
         >>> maybe: Opt[str] = get('hello', data)
-        >>> unwrap(maybe)
+        >>> maybe.unwrap()
         'world'
     """
 
@@ -1030,13 +1028,13 @@ def combine_errors(to: F, inherit_message: bool = False):
     Examples: ::
 
         >>> @combine_errors(Nil())
-        ... @safe(KeyError, IndexError)
+        >>> @safe(KeyError, IndexError)
         ... def get(index: str, data: dict[str, str]) -> str:
         ...     return data[index]
         ...
         >>> data: dict[str, str] = {'hello': 'world'}
         >>> element: Opt[str] = get('hola', data)
-        >>> unwrap_err(element)
+        >>> element.unwrap_err()
         Nil('Did not expect None')
 
     """

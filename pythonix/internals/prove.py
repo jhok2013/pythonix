@@ -7,7 +7,7 @@ Examples: ::
 
     >>> val: int = 10
     >>> is_even = lambda x: x % 2 == 0
-    >>> _, err = unpack(that(is_even)(val))
+    >>> _, err = that(is_even)(val).unpack()
     >>> err is None
     True
 
