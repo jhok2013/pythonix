@@ -5,7 +5,8 @@ from typing import (
     Generic,
     TypeVar,
     Callable,
-    ParamSpec, cast,
+    ParamSpec,
+    cast,
     Iterator,
     overload,
 )
@@ -88,7 +89,7 @@ class Res(Generic[T, E]):
 
     Comparisons can be made between same states, returning False for different states. ::
 
-        >>> ok > Res[int, ValueError].Ok(9) 
+        >>> ok > Res[int, ValueError].Ok(9)
         True
         >>> ok > err
         False
@@ -107,7 +108,7 @@ class Res(Generic[T, E]):
         ...     val
         ...
         >>> # Does nothing because it failed
-    
+
     Will automatically iterate over Ok list, tuple, and set objects ::
 
         >>> iter_ok = Res[list[int], ValueError].Ok([10, 20])
@@ -126,10 +127,10 @@ class Res(Generic[T, E]):
 
     def __nonzero__(self) -> bool:
         return self.is_ok
-    
+
     def __bool__(self) -> bool:
         return self.is_ok
-    
+
     def __str__(self) -> str:
         if self.is_err:
             match self.unwrap_err():
@@ -138,88 +139,100 @@ class Res(Generic[T, E]):
         if isinstance(self.inner, str):
             return f"Ok(inner='{self.inner}')"
         return f"Ok(inner={self.inner})"
-    
+
     def __contains__(self, item) -> bool:
         if self.is_err:
             return False
-        if hasattr(self.inner, '__iter__') or hasattr(self.inner, '__contains__'):
+        if hasattr(self.inner, "__iter__") or hasattr(self.inner, "__contains__"):
             return item in self.inner
         else:
             return item in [self.inner]
-    
-    @overload
-    def __iter__(self: Res[tuple[U], E]) -> Iterator[U]: ...
 
     @overload
-    def __iter__(self: Res[list[U], E]) -> Iterator[U]: ...
+    def __iter__(self: Res[tuple[U], E]) -> Iterator[U]:
+        ...
 
     @overload
-    def __iter__(self: Res[set[U], E]) -> Iterator[U]: ...
+    def __iter__(self: Res[list[U], E]) -> Iterator[U]:
+        ...
 
     @overload
-    def __iter__(self: Res[U, E]) -> Iterator[U]: ...
+    def __iter__(self: Res[set[U], E]) -> Iterator[U]:
+        ...
+
+    @overload
+    def __iter__(self: Res[U, E]) -> Iterator[U]:
+        ...
 
     def __iter__(self):
         if self.is_err:
-            return iter([]) 
+            return iter([])
         match self.unwrap():
             case list(data) | tuple(data) | set(data):
                 return iter(data)
             case x:
                 return iter([x])
-        
+
     def __lt__(self, other: object) -> bool:
-        method_name: str = '__lt__'
-        opposite_name: str = '__gt__'
+        method_name: str = "__lt__"
+        opposite_name: str = "__gt__"
         match other:
             case Res(inner, is_ok) if is_ok == self.is_ok:
                 if hasattr(self.inner, method_name):
                     return self.inner < inner
                 if hasattr(self.inner, opposite_name):
                     return not self.inner > inner
-                raise TypeError(f'No comparison possible between {type(self.inner)} and {type(inner)}')
+                raise TypeError(
+                    f"No comparison possible between {type(self.inner)} and {type(inner)}"
+                )
             case _:
                 return False
-    
+
     def __le__(self, other: object) -> bool:
-        method_name: str = '__le__'
-        opposite_name: str = '__ge__'
+        method_name: str = "__le__"
+        opposite_name: str = "__ge__"
         match other:
             case Res(inner, is_ok) if is_ok == self.is_ok:
                 if hasattr(self.inner, method_name):
                     return self.inner <= inner
                 if hasattr(self.inner, opposite_name):
                     return not self.inner >= inner
-                raise TypeError(f'No comparison possible between {type(self.inner)} and {type(inner)}')
+                raise TypeError(
+                    f"No comparison possible between {type(self.inner)} and {type(inner)}"
+                )
             case _:
                 return False
-    
+
     def __ge__(self, other: object) -> bool:
-        method_name: str = '__ge__'
-        opposite_name: str = '__le__'
+        method_name: str = "__ge__"
+        opposite_name: str = "__le__"
         match other:
             case Res(inner, is_ok) if is_ok == self.is_ok:
                 if hasattr(self.inner, method_name):
                     return self.inner >= inner
                 if hasattr(self.inner, opposite_name):
                     return not self.inner <= inner
-                raise TypeError(f'No comparison possible between {type(self.inner)} and {type(inner)}')
+                raise TypeError(
+                    f"No comparison possible between {type(self.inner)} and {type(inner)}"
+                )
             case _:
                 return False
-    
+
     def __gt__(self, other: object) -> bool:
-        method_name: str = '__gt__'
-        opposite_name: str = '__lt__'
+        method_name: str = "__gt__"
+        opposite_name: str = "__lt__"
         match other:
             case Res(inner, is_ok) if is_ok == self.is_ok:
                 if hasattr(self.inner, method_name):
                     return self.inner > inner
                 if hasattr(self.inner, opposite_name):
                     return not self.inner < inner
-                raise TypeError(f'No comparison possible between {type(self.inner)} and {type(inner)}')
+                raise TypeError(
+                    f"No comparison possible between {type(self.inner)} and {type(inner)}"
+                )
             case _:
                 return False
- 
+
     @staticmethod
     def Ok(value: T) -> Res[T, E]:
         """Creates a `Res` in an `Ok` state. Cannot receive a child of `Exception`
