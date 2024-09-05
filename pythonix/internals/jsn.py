@@ -14,7 +14,7 @@ To decode a value from JSON use `decode` ::
     Ok(inner={'hello': 'world'})
 
 """
-from json import JSONDecodeError, JSONDecoder, JSONEncoder, load, loads, dump, dumps
+from json import JSONDecoder, JSONEncoder, load, loads, dump, dumps
 from typing import (
     overload,
     Callable,
@@ -57,7 +57,7 @@ DecodableT = TypeVar("DecodableT", str, float, int, dict, list, bool, None)
 class EncodeOpts:
     """Struct for options to encode an object to JSON"""
 
-    skip_keys: bool = False
+    skipkeys: bool = False
     ensure_ascii: bool = True
     check_circular: bool = True
     allow_nan: bool = True

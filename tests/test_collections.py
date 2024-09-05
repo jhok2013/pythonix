@@ -189,10 +189,10 @@ class TestStrictDict(TestCase):
         self.assertEqual(self.d["hello"].q, "mundo")
 
         with self.assertRaises(ValueError):
-            self.d[0] = 10
+            self.d[0] = 'foo' # type: ignore
 
         with self.assertRaises(ValueError):
-            self.d["hello"] = 10
+            self.d["hello"] = 10 # type: ignore
     
     def test_get_item(self) -> None:
         self.assertEqual(self.d["hello"].unwrap(), "world")

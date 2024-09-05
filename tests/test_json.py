@@ -5,7 +5,7 @@ class TestJSON(TestCase):
 
     def test_encode(self):
 
-        encoded = jsn.encode(**jsn.pretty())({"hello": "world"}).q
+        encoded = jsn.encode(jsn.pretty())({"hello": "world"}).q
         self.assertIsInstance(encoded, str)
     
     def test_decode(self):

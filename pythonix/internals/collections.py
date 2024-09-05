@@ -478,9 +478,9 @@ class StrictDict(DictPlus[K, V]):
 
     """
 
-    __ktype: type[K]
+    _ktype: type[K]
     """The key type. Should not be changed except in the `new` method"""
-    __vtype: type[V]
+    _vtype: type[V]
     """The value type. Should not be changed except in the `new` method"""
 
     @property
@@ -490,7 +490,7 @@ class StrictDict(DictPlus[K, V]):
         Returns:
             type[K]: The key type
         """
-        return self.__ktype
+        return self._ktype
 
     @property
     def vt(self) -> type[V]:
@@ -499,7 +499,7 @@ class StrictDict(DictPlus[K, V]):
         Returns:
             type[K]: The value type
         """
-        return self.__vtype
+        return self._vtype
 
     @classmethod
     def new(cls, ktype: type[NewK], vtype: type[NewV]) -> StrictDict[NewK, NewV]:
@@ -513,8 +513,8 @@ class StrictDict(DictPlus[K, V]):
             StrictDict[NewK, NewV]: A new `StrictDict`
         """
         obj = cls.__new__(cls)
-        object.__setattr__(obj, "__ktype", ktype)
-        object.__setattr__(obj, "__vtype", vtype)
+        object.__setattr__(obj, "_ktype", ktype)
+        object.__setattr__(obj, "_vtype", vtype)
         return cast(StrictDict[NewK, NewV], obj)
 
     def __setitem__(self, key: K, value: V) -> None:

@@ -1,8 +1,10 @@
 from unittest import TestCase
-from pythonix.res import *
+from pythonix.res import Res, safe
 from pythonix.trail import *
 
 class TestTrail(TestCase):
+
+    t: Trail[int]
 
     def setUp(self) -> None:
         self.t = Trail(10, [Info("10 created")])
@@ -62,15 +64,19 @@ class TestTrail(TestCase):
         self.assertEqual(self.t.inner, 20)
     
     def test_map_with_res(self):
-        res = Ok(10, ValueError)
-        self.t = Trail(res, [Info("Received result")])
-        self.t = (
-            self.t
-            .map(lambda r: r.map(lambda x: x + 10), Info("Added 10"))
-            .map(lambda r: r.map(lambda x: x * 2), Info("Multiplied by 2"))
-            .map(lambda r: r.q)
+        res = Res[int, ValueError].Ok(10)
+        t = Trail(res, [Info("Received result")])
+        expected = '20'
+        actual = (
+            t
+            .map(lambda r: r.map(lambda v: v + 10), Info("Added 10"))
+            .map(lambda r: r.map(str), Info("Converted to string"))
+            .map(lambda r: r.q, Info("Unwrapped value"))
+            .inner
         )
-        self.assertEqual(40, self.t.inner)
+
+        self.assertEqual(expected, actual)
+
     
 
 class TestDecorators(TestCase):
@@ -142,7 +148,7 @@ class TestDecorators(TestCase):
     def test_with_res(self):
 
         @safe(ZeroDivisionError)
-        @then_log("Successfully divided")
+        @then_log(Info("Successfully divided"))
         @start(Info("Starting division"))
         def divide(x: int, y: int) -> float:
             return x / y

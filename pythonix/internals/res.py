@@ -100,7 +100,7 @@ class Res(Generic[T, E]):
         True
 
         """
-        return Res[T, E](value, True)
+        return Res[T, E](value, False)
 
     @staticmethod
     def Err(value: E) -> Res[T, E]:
@@ -133,7 +133,7 @@ class Res(Generic[T, E]):
         """
         if not isinstance(value, Exception):
             raise TypeError(f"Expected subclass of Exception but found {value}")
-        return Res[T, E](value, False)
+        return Res[T, E](value, True)
 
     @staticmethod
     def Some(value: U | None) -> Res[U, Nil]:
@@ -159,7 +159,7 @@ class Res(Generic[T, E]):
         False
         """
         if value is None:
-            return Res[U, Nil](Nil(), False)
+            return Res.Err(Nil())
         return Res.Ok(value)
 
     @staticmethod

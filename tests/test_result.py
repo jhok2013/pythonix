@@ -5,8 +5,11 @@ from pythonix.internals.res import safe
 
 
 class TestOk(TestCase):
+
+    test_res: Res[int, Exception]
+
     def setUp(self) -> None:
-        self.test_res = res.Ok(5, Exception)
+        self.test_res = Res[int, Exception].Ok(5)
         return super().setUp()
     
     def test_dos(self):
@@ -32,25 +35,27 @@ class TestOk(TestCase):
         self.assertEqual(self.test_res.map(lambda x: x + 1).inner, 6)
         self.assertEqual(self.test_res.map_or(lambda x: x + 1, 0).inner, 6)
         self.assertEqual(
-            self.test_res.map_or_else(lambda x: x + 1, lambda: 0).inner, 6
+            self.test_res.map_or_else(lambda x: x + 1, lambda e: 0).inner, 6
         )
         self.assertEqual(
             self.test_res.map_err(lambda e: ValueError(str(e))).inner, 5
         )
 
     def test_and_funcs(self) -> None:
-        self.assertEqual(self.test_res.and_then(lambda x: res.Ok(x + 5, Exception)).inner, 10)
-        self.assertEqual(self.test_res.and_(res.Ok(10, Exception)).inner, 10)
+        self.assertEqual(self.test_res.and_then(lambda x: Res[int, Exception].Ok(x + 5)).inner, 10)
+        self.assertEqual(self.test_res.and_(Res[int, Exception].Ok(10)).inner, 10)
 
     def test_or_funcs(self) -> None:
-        self.assertEqual(self.test_res.or_else(lambda e: 10).inner, 5)
-        self.assertEqual(self.test_res.or_(res.Err(ValueError(), int)).inner, 5)
+        self.assertEqual(self.test_res.or_else(lambda e: Res[int, Exception].Ok(10)).inner, 5)
+        self.assertEqual(self.test_res.or_(Res.Err(ValueError())).inner, 5)
 
 
 class TestErr(TestCase):
-    # TODO: Finish updating tests
+
+    test_res: Res[int, Exception]
+
     def setUp(self) -> None:
-        self.test_res = res.Err(Exception(), int)
+        self.test_res = Res[int, Exception].Err(Exception())
 
     def test_is_funcs(self) -> None:
         self.assertTrue(self.test_res.is_err)
@@ -73,19 +78,19 @@ class TestErr(TestCase):
 
     def test_and_funcs(self) -> None:
         self.assertIsInstance(
-            self.test_res.and_then(lambda x: res.Ok(x + 5, Exception)).inner,
+            self.test_res.and_then(lambda x: Res[int, Exception].Ok(x + 5)).inner,
             Exception,
         )
         self.assertIsInstance(
-            self.test_res.and_(res.Ok(10, Exception)).inner, Exception
+            self.test_res.and_(Res[int, Exception].Ok(10)).inner, Exception
         )
 
     def test_or_funcs(self) -> None:
         self.assertIsInstance(
-            self.test_res.or_(res.Err(ValueError(), int)).inner, ValueError
+            self.test_res.or_(Res[int, Exception].Err(ValueError())).inner, ValueError
         )
         self.assertIsInstance(
-            self.test_res.or_else(lambda e: Err(ValueError(str(e)), int)).inner,
+            self.test_res.or_else(lambda e: Res[int, ValueError].Err(ValueError(str(e)))).inner,
             ValueError
         )
     
@@ -110,6 +115,6 @@ class TestDecorators(TestCase):
 class TestOpt(TestCase):
 
     def test_some(self):
-        self.assertTrue(res.Ok(None, Exception).some().is_err)
-        self.assertFalse(res.Ok(10, Exception).some().is_err)
+        self.assertEqual(Res.Some(10).unwrap(), 10)
+        self.assertIsInstance(Res.Some(None).unwrap_err(), Nil)
     
