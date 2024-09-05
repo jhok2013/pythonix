@@ -26,7 +26,7 @@ class TestShiftOps(TestCase):
         match actual:
             case res.Res(str(inner)):
                 self.assertEqual(inner, '10')
-            case res.Res(Exception(e)):
+            case res.Res(e) if isinstance(e, Exception):
                 self.fail(str(e))
     
     def test_apply_prefix(self) -> None:
