@@ -84,7 +84,7 @@ class Res(Generic[T, E]):
         True
         >>> err != ok
         True
-        >>> ok != Res[int, ValueError].Ok(11)
+        >>> ok == Res[int, ValueError].Ok(11)
         False
 
     In can be used to check the value if Ok or check for its presence in an iterable::
