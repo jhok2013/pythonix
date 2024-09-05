@@ -1,12 +1,14 @@
 from typing import TypeVar, Callable, ParamSpec
 from pythonix.internals.trail.trail import Trail, Log, Info
+
 P = ParamSpec("P")
 T = TypeVar("T")
 U = TypeVar("U")
 E = TypeVar("E", bound="Exception")
 L = TypeVar("L", bound="Log")
 
-def start(*logs: L):
+
+def start(*logs: Log):
     """Wraps the function in a Trail with any number of Logs attached.
     If composing functions with Trail, you want to start with this one and
     then use the `then` themed decorators. If using `Res`, make sure that the
@@ -24,11 +26,9 @@ def start(*logs: L):
     'Ending'
 
     """
-    
+
     def inner(func: Callable[P, U]) -> Callable[P, Trail[U]]:
-
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Trail[U]:
-
             return Trail(func(*args, **kwargs), logs)
 
         return wrapper
@@ -36,31 +36,25 @@ def start(*logs: L):
     return inner
 
 
-def then_log_top(*logs: L):
-
+def then_log_top(*logs: Log):
     def inner(func: Callable[P, Trail[U]]):
-
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Trail[U]:
-
             trail = func(*args, **kwargs)
             trail.logs.extendleft(logs)
             return trail
-        
+
         return wrapper
-    
+
     return inner
 
 
-def then_log(*logs: L):
-
+def then_log(*logs: Log):
     def inner(func: Callable[P, Trail[U]]):
-
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Trail[U]:
-
-            trail = func(*args,**kwargs)
+            trail = func(*args, **kwargs)
             trail.logs.extend(logs)
             return trail
-        
+
         return wrapper
-    
+
     return inner

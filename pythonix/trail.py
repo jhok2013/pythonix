@@ -38,8 +38,4 @@ from pythonix.internals.trail.trail import (
     Debug,
     Error,
 )
-from pythonix.internals.trail.decorators import (
-    start,
-    then_log,
-    then_log_top
-)
+from pythonix.internals.trail.decorators import start, then_log, then_log_top

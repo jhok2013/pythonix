@@ -138,7 +138,7 @@ def fn(
     ...
 
 
-def fn(*type_args):
+def fn(*type_args):  # type: ignore
     """Function to create lambdas with type hints. Supports up to 9 arguments.
 
     The first call allows specification of the types, with the last or the

@@ -31,7 +31,7 @@ def that(predicate: Callable[[T], bool], val: T) -> T:
     Args:
         predicate (Fn[T, bool]): Function to evaluate the value
         val (T): The value to be evaluated
-    
+
     Returns:
         outcome (Res[T, AssertionError]): The value if it evaluated True
 
@@ -50,7 +50,7 @@ def that(predicate: Callable[[T], bool], val: T) -> T:
 
 @two
 @safe(AssertionError)
-def equals(left: U, right: T) -> T:
+def equals(left: T, right: T) -> T:
     """Assert that two values are equal.
 
     Args:
@@ -59,7 +59,7 @@ def equals(left: U, right: T) -> T:
 
     Returns:
         result (Res[T, AssertionError]): Right value or an Err
-    
+
     ## Example ::
 
         >>> expected: int = 10

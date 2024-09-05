@@ -53,16 +53,16 @@ class TestDeq(TestCase):
     
     def test_get(self) -> None:
         self.assertEqual(self.deq.get(0).unwrap(), 1)
-        self.assertIsInstance(self.deq.get(10).unwrap_err(), NoneError)
+        self.assertIsInstance(self.deq.get(10).unwrap_err(), Nil)
     
     def test_pops(self) -> None:
         self.deq.clear()
-        self.assertIsInstance(self.deq.pop().unwrap_err(), NoneError)
-        self.assertIsInstance(self.deq.popleft().unwrap_err(), NoneError)
+        self.assertIsInstance(self.deq.pop().unwrap_err(), Nil)
+        self.assertIsInstance(self.deq.popleft().unwrap_err(), Nil)
     
     def test_index(self) -> None:
         self.assertEqual(self.deq.index(1).unwrap(), 0)
-        self.assertIsInstance(self.deq.index(10).unwrap_err(), NoneError)
+        self.assertIsInstance(self.deq.index(10).unwrap_err(), Nil)
     
     def test_map(self) -> None:
         self.assertEqual(self.deq.map(lambda x: x + 1).pop().unwrap(), 4)
@@ -71,7 +71,7 @@ class TestDeq(TestCase):
         self.assertEqual(self.deq.where(lambda x: x == 1).pop().unwrap(), 1)
     
     def test_maxlen(self) -> None:
-        self.assertIsInstance(self.deq.maxlen.unwrap_err(), NoneError)
+        self.assertIsInstance(self.deq.maxlen.unwrap_err(), Nil)
     
     def test_remove(self) -> None:
         self.assertEqual(self.deq.remove(1).q.popleft().q, 2)
@@ -95,7 +95,7 @@ class TestDictPlus(TestCase):
     
     def test_get_item(self) -> None:
         self.assertEqual(self.d["hello"].unwrap(), "world")
-        self.assertIsInstance(self.d["world"].unwrap_err(), NoneError)
+        self.assertIsInstance(self.d["world"].unwrap_err(), Nil)
     
     def test_iteration(self) -> None:
         i = iter(self.d)
@@ -111,11 +111,11 @@ class TestDictPlus(TestCase):
     
     def test_pop(self):
         self.assertEqual(self.d.pop("hello").unwrap(), "world")
-        self.assertIsInstance(self.d.pop("world").unwrap_err(), NoneError)
+        self.assertIsInstance(self.d.pop("world").unwrap_err(), Nil)
 
     def test_popitem(self):
         self.assertEqual(self.d.popitem().unwrap(), ("hello", "world"))
-        self.assertIsInstance(self.d.popitem().unwrap_err(), NoneError)
+        self.assertIsInstance(self.d.popitem().unwrap_err(), Nil)
     
     def test_update(self):
         key, value = "hola", "mundo"
@@ -162,7 +162,7 @@ class TestDictPlus(TestCase):
 
     def test_clear(self):
         self.d.clear()
-        self.assertIsInstance(self.d.pop("hello").unwrap_err(), NoneError)
+        self.assertIsInstance(self.d.pop("hello").unwrap_err(), Nil)
     
     def test_copy(self):
         copied = self.d.copy()
@@ -196,7 +196,7 @@ class TestStrictDict(TestCase):
     
     def test_get_item(self) -> None:
         self.assertEqual(self.d["hello"].unwrap(), "world")
-        self.assertIsInstance(self.d["world"].unwrap_err(), NoneError)
+        self.assertIsInstance(self.d["world"].unwrap_err(), Nil)
     
     def test_len(self) -> None:
         self.assertEqual(len(self.d), 1)
@@ -206,11 +206,11 @@ class TestStrictDict(TestCase):
     
     def test_pop(self):
         self.assertEqual(self.d.pop("hello").unwrap(), "world")
-        self.assertIsInstance(self.d.pop("world").unwrap_err(), NoneError)
+        self.assertIsInstance(self.d.pop("world").unwrap_err(), Nil)
 
     def test_popitem(self):
         self.assertEqual(self.d.popitem().unwrap(), ("hello", "world"))
-        self.assertIsInstance(self.d.popitem().unwrap_err(), NoneError)
+        self.assertIsInstance(self.d.popitem().unwrap_err(), Nil)
     
     def test_update(self):
         key, value = "hola", "mundo"
@@ -257,7 +257,7 @@ class TestStrictDict(TestCase):
 
     def test_clear(self):
         self.d.clear()
-        self.assertIsInstance(self.d.pop("hello").unwrap_err(), NoneError)
+        self.assertIsInstance(self.d.pop("hello").unwrap_err(), Nil)
     
     def test_copy(self):
         copied = self.d.copy()

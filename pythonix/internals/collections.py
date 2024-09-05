@@ -13,7 +13,7 @@ from typing import (
 from typing_extensions import Self
 from collections import deque
 from dataclasses import dataclass
-from pythonix.internals.res import Opt, Res
+from pythonix.internals.res import Res, Nil
 
 
 _KT = TypeVar("_KT")
@@ -27,15 +27,19 @@ L = TypeVar("L")
 NewK = TypeVar("NewK")
 NewV = TypeVar("NewV")
 
-@dataclass(frozen=True, eq=True, init=True, match_args=True, order=True, repr=True, slots=True)
+
+@dataclass(
+    frozen=True, eq=True, init=True, match_args=True, order=True, repr=True, slots=True
+)
 class Pair(Generic[T]):
     """Wrapper for a key value pair
 
     Args:
-        key (str): The name for the value    
+        key (str): The name for the value
         value (T): The value
 
     """
+
     key: str
     value: T
 
@@ -71,13 +75,13 @@ class Deq(deque[T]):
         """
         super().__init__(iterable, maxlen)
 
-    def __getitem__(self, key: SupportsIndex) -> Opt[T]:
+    def __getitem__(self, key: SupportsIndex) -> Res[T, Nil]:
         try:
             return Res.Some(super().__getitem__(key))
         except (IndexError, KeyError) as e:
-            return Res.Nil(T, str(e))
+            return Res[T, Nil].Nil(str(e))
 
-    def get(self, index: int) -> Opt[T]:
+    def get(self, index: int) -> Res[T, Nil]:
         """Retrieves a value as an `Opt[T]` at a given index
 
         Args:
@@ -88,7 +92,7 @@ class Deq(deque[T]):
         """
         return self[index]
 
-    def append(self, x: U) -> Deq[T | U]:
+    def append(self: Deq[T | U], x: U) -> Deq[T | U]:
         """Appends a value to the right of the Deq, updating type information.
 
         Args:
@@ -100,7 +104,7 @@ class Deq(deque[T]):
         super().append(x)
         return self
 
-    def appendleft(self, x: U) -> Deq[T | U]:
+    def appendleft(self: Deq[T | U], x: U) -> Deq[T | U]:
         """Appends a value to the right of the Deq, updating type information.
 
         Args:
@@ -112,7 +116,7 @@ class Deq(deque[T]):
         super().appendleft(x)
         return self
 
-    def clear(self) -> Deq[None]:
+    def clear(self) -> Deq[T]:
         """Clears out the Deq
 
         Returns:
@@ -121,7 +125,7 @@ class Deq(deque[T]):
         super().clear()
         return self
 
-    def extend(self, iterable: Iterable[U]) -> Deq[T | U]:
+    def extend(self: Deq[T | U], iterable: Iterable[U]) -> Deq[T | U]:
         """Appends an iterable to the Deq, updating type information
 
         Args:
@@ -133,7 +137,7 @@ class Deq(deque[T]):
         super().extend(iterable)
         return self
 
-    def extendleft(self, iterable: Iterable[U]) -> Deq[T | U]:
+    def extendleft(self: Deq[T | U], iterable: Iterable[U]) -> Deq[T | U]:
         """Appends an iterable to the left of the Deq, updating type information
 
         Args:
@@ -145,7 +149,7 @@ class Deq(deque[T]):
         super().extendleft(iterable)
         return self
 
-    def insert(self, i: int, x: U) -> Deq[T | U]:
+    def insert(self: Deq[T | U], i: int, x: U) -> Deq[T | U]:
         """Inserts a value at a given index
 
         Args:
@@ -158,7 +162,7 @@ class Deq(deque[T]):
         super().insert(i, x)
         return self
 
-    def pop(self) -> Opt[T]:
+    def pop(self) -> Res[T, Nil]:
         """Returns and removes the right most element of the Deq as an `Opt`
 
         Returns:
@@ -167,9 +171,9 @@ class Deq(deque[T]):
         try:
             return Res.Some(super().pop())
         except IndexError as e:
-            return Res.Nil(T, str(e))
+            return Res[T, Nil].Nil(str(e))
 
-    def popleft(self) -> Opt[T]:
+    def popleft(self) -> Res[T, Nil]:
         """Returns and removes the left most element of the Deq as an `Opt`
 
         Returns:
@@ -178,7 +182,7 @@ class Deq(deque[T]):
         try:
             return Res.Some(super().popleft())
         except IndexError as e:
-            return Res.Nil(T, str(e))
+            return Res[T, Nil].Nil(str(e))
 
     def remove(self, value: T) -> Res[Deq[T], ValueError]:
         """Removes the element with the provided value
@@ -191,9 +195,9 @@ class Deq(deque[T]):
         """
         try:
             super().remove(value)
-            return Res.Ok(self, ValueError)
+            return Res[Deq[T], ValueError].Ok(self)
         except ValueError as e:
-            return Res.Err(e, Deq[T])
+            return Res[Deq[T], ValueError].Err(e)
 
     def reverse(self) -> Deq[T]:
         """Reverses the order of the Deq
@@ -238,7 +242,9 @@ class Deq(deque[T]):
         """
         return Deq([elem for elem in self if using(elem) == True])
 
-    def index(self, x: T, start: int = 0, stop: int = 9223372036854775807) -> Opt[int]:
+    def index(
+        self, x: T, start: int = 0, stop: int = 9223372036854775807
+    ) -> Res[int, Nil]:
         """Retrieves the index of the specified value as an `Opt`
 
         Args:
@@ -252,10 +258,10 @@ class Deq(deque[T]):
         try:
             return Res.Some(super().index(x, start, stop))
         except ValueError as e:
-            return Res.Nil(T, str(e))
+            return Res[int, Nil].Nil(str(e))
 
     @property
-    def maxlen(self) -> Opt[int]:
+    def maxlen(self) -> Res[int, Nil]:
         """Returns the maximum capacity if set, else Nil
 
         Returns:
@@ -290,13 +296,13 @@ class DictPlus(dict[K, V]):
 
     """
 
-    def __getitem__(self, key: K) -> Opt[V]:
+    def __getitem__(self, key: K) -> Res[V, Nil]:
         try:
             return Res.Some(super().__getitem__(key))
         except (KeyError, IndexError) as e:
-            return Res.Nil(V, str(e))
+            return Res[V, Nil].Nil(str(e))
 
-    def get(self, key: K) -> Opt[V]:
+    def get(self, key: K) -> Res[V, Nil]:
         """Retrieves a value if key exists, else Nil
 
         Args:
@@ -307,7 +313,7 @@ class DictPlus(dict[K, V]):
         """
         return self[key]
 
-    def pop(self, key: K) -> Opt[V]:
+    def pop(self, key: K) -> Res[V, Nil]:
         """Returns a value and removes it from the `dict`
 
         Args:
@@ -319,9 +325,9 @@ class DictPlus(dict[K, V]):
         try:
             return Res.Some(super().pop(key))
         except (KeyError, IndexError) as e:
-            return Res.Nil(T, str(e))
+            return Res[V, Nil].Nil(str(e))
 
-    def popitem(self) -> Opt[Tuple[K | V]]:
+    def popitem(self) -> Res[Tuple[K, V], Nil]:
         """Removes and returns the farthest right key value tuple
 
         Returns:
@@ -330,7 +336,7 @@ class DictPlus(dict[K, V]):
         try:
             return Res.Some(super().popitem())
         except (KeyError, IndexError) as e:
-            return Res.Nil(T, str(e))
+            return Res[Tuple[K, V], Nil].Nil(str(e))
 
     @overload
     def update(
@@ -360,8 +366,8 @@ class DictPlus(dict[K, V]):
         Returns:
             DictPlus[K | NewK, V | NewV]: The updated dictionary
         """
-        super().update(m)
-        return self
+        super().update(m)  # type: ignore
+        return self  # type: ignore
 
     def put(self, key: NewK, value: NewV) -> DictPlus[K | NewK, V | NewV]:
         """Adds a key value pair
@@ -375,7 +381,9 @@ class DictPlus(dict[K, V]):
         """
         return self.update({key: value})
 
-    def map(self, using: Callable[[V], NewV]) -> DictPlus[K, V | NewV]:
+    def map(
+        self: DictPlus[K, V | NewV], using: Callable[[V], NewV]
+    ) -> DictPlus[K, V | NewV]:
         """Runs a function over each value in the dictionary
 
         Args:
@@ -385,7 +393,7 @@ class DictPlus(dict[K, V]):
             DictPlus[K, V | NewV]: The updated dictionary
         """
         for k, v in self.items():
-            self[k] = using(v)
+            self[k] = using(cast(V, v))
         return self
 
     def map_keys(self, using: Callable[[K], NewK]) -> DictPlus[K | NewK, V]:
@@ -400,7 +408,7 @@ class DictPlus(dict[K, V]):
         cls = type(self)
         return cls.__new__(cls).update({using(k): v for k, v in self.items()})
 
-    def where(self, using: Callable[[K, V], bool]) -> Self[K, V]:
+    def where(self, using: Callable[[K, V], bool]) -> Self:
         """Filters the dictionary using a function that returns a `bool`
 
         Args:
@@ -414,7 +422,7 @@ class DictPlus(dict[K, V]):
                 self.pop(k)
         return self
 
-    def clear(self) -> Self[K, V]:
+    def clear(self) -> Self:
         """Clears all entries from the dictionary
 
         Returns:
@@ -423,10 +431,10 @@ class DictPlus(dict[K, V]):
         super().clear()
         return self
 
-    def __copy__(self) -> Self[K, V]:
-        return DictPlus(super().copy())
+    def __copy__(self) -> Self:
+        return DictPlus(super().copy())  # type: ignore
 
-    def copy(self) -> Self[K, V]:
+    def copy(self) -> Self:
         """Deep copies the dictionary
 
         Returns:
@@ -435,7 +443,9 @@ class DictPlus(dict[K, V]):
         return self.__copy__()
 
     @classmethod
-    def fromkeys(cls, iterable: Iterable[NewK], value: NewV) -> DictPlus[NewK, NewV]:
+    def fromkeys(
+        cls: type[DictPlus[NewK, NewV]], iterable: Iterable[NewK], value: NewV
+    ) -> DictPlus[NewK, NewV]:
         """Returns a new `DictPlus` with the given keys and default value
 
         Args:
@@ -445,7 +455,8 @@ class DictPlus(dict[K, V]):
         Returns:
             DictPlus[NewK, NewV]: A dictionary filled with the keys and default values
         """
-        return cls.__new__(cls).update(dict.fromkeys(iterable, value))
+        d = super().fromkeys(iterable, value)
+        return cls.__new__(cls).update(d)
 
 
 class StrictDict(DictPlus[K, V]):
@@ -457,14 +468,14 @@ class StrictDict(DictPlus[K, V]):
     Createa typed dict using `new` ::
 
         >>> d = StrictDict.new(ktype=str, vtype=str).put("hello", "world)
-    
+
     Constructing without `new` doesn't enforce types
-    
+
     Setting items that are not the objects declared types raises an Exception
 
         >>> d.put("ten", 10)
         ValueError
-    
+
     """
 
     __ktype: type[K]
@@ -482,7 +493,7 @@ class StrictDict(DictPlus[K, V]):
         return self.__ktype
 
     @property
-    def vt(self) -> type[K]:
+    def vt(self) -> type[V]:
         """The declared type of the values
 
         Returns:
@@ -502,8 +513,8 @@ class StrictDict(DictPlus[K, V]):
             StrictDict[NewK, NewV]: A new `StrictDict`
         """
         obj = cls.__new__(cls)
-        obj.__ktype = ktype
-        obj.__vtype = vtype
+        object.__setattr__(obj, "__ktype", ktype)
+        object.__setattr__(obj, "__vtype", vtype)
         return cast(StrictDict[NewK, NewV], obj)
 
     def __setitem__(self, key: K, value: V) -> None:
@@ -520,17 +531,17 @@ class StrictDict(DictPlus[K, V]):
         return super().__setitem__(key, value)
 
     @overload
-    def update(self, m: dict[K, V]) -> Self[K, V]:
+    def update(self, m: dict[K, V]) -> Self:
         ...
 
     @overload
-    def update(self, m: Iterable[tuple[K, V]]) -> Self[K, V]:
+    def update(self, m: Iterable[tuple[K, V]]) -> Self:
         ...
 
     def update(
         self,
         m: dict[K, V] | SupportsKeysAndGetItem[K, V] | Iterable[tuple[K, V]],
-    ) -> Self[K, V]:
+    ) -> Self:
         """Updates the dictionary with a new one. Raises `ValueError` on bad types
 
         Args:
@@ -542,7 +553,7 @@ class StrictDict(DictPlus[K, V]):
         super().update(m)
         return self
 
-    def put(self, key: K, value: V) -> Self[K, V]:
+    def put(self, key: K, value: V) -> Self:
         """Adds a new key value pair. Raises `ValueError` on bad types
 
         Args:
@@ -551,7 +562,7 @@ class StrictDict(DictPlus[K, V]):
 
         Returns:
             Self[K, V]: An updated dictionary
-        
+
         """
         return self.update({key: value})
 

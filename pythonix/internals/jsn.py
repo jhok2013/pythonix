@@ -15,18 +15,34 @@ To decode a value from JSON use `decode` ::
 
 """
 from json import JSONDecodeError, JSONDecoder, JSONEncoder, load, loads, dump, dumps
-from typing import overload, Callable, TypeVar, Any, TypedDict, Protocol, Generic, cast
+from typing import (
+    overload,
+    Callable,
+    TypeVar,
+    Any,
+    Protocol,
+    Generic,
+    runtime_checkable,
+)
+from dataclasses import dataclass, asdict
 from pythonix.res import Res
 
-T = TypeVar('T')
+T = TypeVar("T")
+T_co = TypeVar("T_co", covariant=True)
+T_contra = TypeVar("T_contra", contravariant=True)
 
-class SupportsWrite(Protocol, Generic[T]):
 
-    def write(self): ...
+@runtime_checkable
+class SupportsWrite(Protocol, Generic[T_contra]):
+    def write(self, s: T_contra, /) -> object:
+        ...
 
-class SupportsRead(Protocol, Generic[T]):
 
-    def read(self): ...
+@runtime_checkable
+class SupportsRead(Protocol, Generic[T_co]):
+    def read(self, length: int = ..., /) -> T_co:
+        ...
+
 
 class JSONError(Exception):
     def __init__(self, message: str):
@@ -37,7 +53,8 @@ DecodableT = TypeVar("DecodableT", str, float, int, dict, list, bool, None)
 """All types that can be decoded from a JSON encoded object"""
 
 
-class EncodeOpts(TypedDict):
+@dataclass
+class EncodeOpts:
     """Struct for options to encode an object to JSON"""
 
     skip_keys: bool = False
@@ -51,7 +68,8 @@ class EncodeOpts(TypedDict):
     sort_keys: bool = False
 
 
-class DecodeOpts(TypedDict):
+@dataclass
+class DecodeOpts:
     """Struct for options to decode an object from JSON"""
 
     cls: type[JSONDecoder] | None = None
@@ -64,22 +82,22 @@ class DecodeOpts(TypedDict):
 
 def pretty(options: EncodeOpts = EncodeOpts()) -> EncodeOpts:
     """Sets an EncodeOpts dictionary to have an indent of 4"""
-    options.update(EncodeOpts(indent=4))
+    options.indent = 4
     return options
 
 
-def encode(**options):
+def encode(encode_opts: EncodeOpts):
     """Encode an object to JSON.
-    
+
     Args:
         options (dict[str, Any]): kwargs argument. Should be unloaded from EncodeOpts
         encodeable_obj (SupportsWrite[str]): An object with a write method
         encodeable_obj (Any): An object that can be encoded to JSON
-        
+
     Returns:
         write_result (Res[SupportsWrite[str], JSONError]): A result if encodeable_obj is SupportsWrite[str]
         result (Res[str, JSONError]): A result containing the encoded object as a str
-    
+
     ## Examples ::
 
         >>> encodable: dict[str, str] = {"hello": "world"}
@@ -98,32 +116,32 @@ def encode(**options):
         ...
 
     def get_obj(
-        encodeable_obj: SupportsWrite[str] | Any,
+        obj: SupportsWrite[str] | Any,
     ) -> Res[SupportsWrite[str], JSONError] | Res[str, JSONError]:
         try:
-            if writable := hasattr(encodeable_obj, "write"):
-                dump(encodeable_obj, **options)
-                return Res.Ok(encodeable_obj, JSONError)
-            return Res.Ok(dumps(encodeable_obj, **options), JSONError)
+            if writable := hasattr(obj, "write"):
+                dump(obj, **asdict(encode_opts))
+                return Res.Ok(obj)
+            return Res[str, JSONError].Ok(dumps(obj, **asdict(encode_opts)))
         except (ValueError, TypeError) as e:
             if writable:
-                return Res.Err(JSONError(str(e)), SupportsWrite[str])
-            return Res.Err(JSONError(str(e)), str)
+                return Res[SupportsWrite[str], JSONError].Err(JSONError(str(e)))
+            return Res[str, JSONError].Err(JSONError(str(e)))
 
     return get_obj
 
 
 def decode(expected_type: type[DecodableT] = dict, options: DecodeOpts = DecodeOpts()):
     """Decode an object from JSON
-    
+
     Args:
         expected_type (type[DecodableT]): Default `dict`. The type to be expected when you decode
         options (DecodeOpts): Default `DecodeOpts()`. Options for decoding the JSON. Optional
         decodable_json (str | bytes | bytearray | SupportsRead[str]): JSON encoded data
-    
+
     Returns:
         result (Res[DecodableT, JSONError]): Decoded JSON as your expected type. Or an Err.
-    
+
     ## Examples
 
     >>> encoded: str = '{"hello": "world"}'
@@ -137,22 +155,31 @@ def decode(expected_type: type[DecodableT] = dict, options: DecodeOpts = DecodeO
         decodable_json: str | bytes | bytearray | SupportsRead[str],
     ) -> Res[DecodableT, JSONError]:
         match decodable_json:
-            case str() | bytes() | bytearray():
-                method = loads
-            case reader if hasattr(reader, "read"):
-                method = load
-            case _:
-                raise TypeError(
-                    "Invalid type. Expected deserializable type or one that supports read"
+            case str(d) | bytes(d) | bytearray(d):
+                match loads(d, **asdict(options)):
+                    case expected if isinstance(expected, expected_type):
+                        return Res[DecodableT, JSONError].Ok(expected)
+                    case unexpected_type:
+                        return Res[DecodableT, JSONError].Err(
+                            JSONError(
+                                f"Expected a decodable type but found {type(unexpected_type)}"
+                            )
+                        )
+            case supports_read if isinstance(supports_read, SupportsRead):
+                match load(supports_read, **asdict(options)):
+                    case expected if isinstance(expected, expected_type):
+                        return Res[DecodableT, JSONError].Ok(expected)
+                    case unexpected_type:
+                        return Res[DecodableT, JSONError].Err(
+                            JSONError(
+                                f"Expected a decodable type but found {type(unexpected_type)}"
+                            )
+                        )
+            case unexpected_type:
+                return Res[DecodableT, JSONError].Err(
+                    JSONError(
+                        f"Expected a decodable type but found {type(unexpected_type)}"
+                    )
                 )
-
-        try:
-            if not isinstance(
-                decoded := method(decodable_json, **options), expected_type
-            ):
-                return Res.Err(JSONError(f"Expected to decode {type(expected_type)} but found {type(decoded)}"), DecodableT)
-            return Res.Ok(decoded, JSONError)
-        except (ValueError, TypeError, JSONDecodeError) as e:
-            return Res.Err(JSONError(str(e)), DecodableT)
 
     return get_obj

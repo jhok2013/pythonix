@@ -172,12 +172,13 @@ class PipeInfix(Generic[T, S, U], object):
     def __call__(self, left: T, right: S) -> U:
         return self.op(left)(right)
 
+
 class ShiftApplyPrefix(Generic[T], object):
     """Allows the loading of a function using a right shift `>>`
-    
+
     Args:
         inner (T): The wrapped value used in the function received by `apply` or `>>`
-    
+
     ## Examples ::
 
         >>> x: ShiftApplySuffix[int] = ShiftApplySuffix(10)
@@ -185,7 +186,7 @@ class ShiftApplyPrefix(Generic[T], object):
         '10'
         >>> x >> float
         10.0
-    
+
     """
 
     inner: T
@@ -193,7 +194,7 @@ class ShiftApplyPrefix(Generic[T], object):
 
     def __init__(self, inner: T) -> None:
         self.inner = inner
-    
+
     def apply(self, op: Callable[[T], U]) -> U:
         """Returns the output of the function with inner as its argument
 
@@ -204,7 +205,7 @@ class ShiftApplyPrefix(Generic[T], object):
             U: The return value of the provided function
         """
         return op(self.inner)
-    
+
     def __rshift__(self, op: Callable[[T], U]) -> U:
         """Returns the output of the function with inner as its argument
 
@@ -216,12 +217,13 @@ class ShiftApplyPrefix(Generic[T], object):
         """
         return self.apply(op)
 
+
 class ShiftApplySuffix(Generic[T], object):
     """Allos the loading of a function using a left shift `>>`
 
     Args:
         inner (T): The wrapped value used in the function used by `apply` or `>>`
-    
+
     ## Examples ::
 
         >>> x: ShiftApplyPrefix[int] = ShiftApplyPrefix(10)
@@ -235,7 +237,7 @@ class ShiftApplySuffix(Generic[T], object):
 
     def __init__(self, inner: T) -> None:
         self.inner = inner
-    
+
     def apply(self, op: Callable[[T], U]) -> U:
         """Returns the output of the function with inner as its argument
 
@@ -246,7 +248,7 @@ class ShiftApplySuffix(Generic[T], object):
             U: The return value of the provided function
         """
         return op(self.inner)
-    
+
     def __rrshift__(self, op: Callable[[T], U]) -> U:
         """Returns the output of the function with inner as its argument
 
@@ -257,7 +259,7 @@ class ShiftApplySuffix(Generic[T], object):
             U: The return value of the provided function
         """
         return self.apply(op)
-    
+
 
 class ShiftApplyInfix(object):
     """Used as an operator to pass arguments to functions
@@ -270,10 +272,12 @@ class ShiftApplyInfix(object):
 
     """
 
-    def __init__(self): ...
+    def __init__(self):
+        ...
 
     def __rlshift__(self, other: T) -> ShiftApplyPrefix[T]:
         return ShiftApplyPrefix(other)
+
 
 x: ShiftApplyInfix = ShiftApplyInfix()
 """Infix operator to pass arguments to functions using `<<` and `>>`
@@ -284,7 +288,7 @@ x: ShiftApplyInfix = ShiftApplyInfix()
     '10'
 
 """
-    
+
 
 class PipeApplySuffix(Generic[T], object):
     """Applies function on its left | with inner, returning the result

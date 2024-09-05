@@ -1,8 +1,9 @@
 """Gracefully handle Errors and None as result values. Catch them as values with decorators."""
 
 from __future__ import annotations
-from typing import Generic, TypeVar, Callable, TypeAlias, overload, ParamSpec
-from dataclasses import dataclass, field
+from typing import Generic, TypeVar, Callable, TypeAlias, ParamSpec, cast, overload
+from typing_extensions import TypedDict
+from dataclasses import dataclass
 from functools import wraps
 
 P = ParamSpec("P")
@@ -15,8 +16,9 @@ U = TypeVar("U")
 class UnwrapError(Exception):
     """Exception used for when a `Res` is unwrapped while in an error state"""
 
-    def __init__(self, message: str = 'Unwrapped while in an Err state'):
+    def __init__(self, message: str = "Unwrapped while in an Err state"):
         super().__init__(self, message)
+
 
 class ExpectError(Exception):
     """Exception used for when a `Res` is unwrapped with `expect`"""
@@ -24,29 +26,52 @@ class ExpectError(Exception):
     def __init__(self, message: str):
         super().__init__(self, message)
 
-class NoneError(Exception):
+
+class Nil(Exception):
     """Exception used for when a `Res` is None while expecting something"""
 
-    def __init__(self, message: str = 'Found None while expecting something'):
+    def __init__(self, message: str = "Found None while expecting something"):
         super().__init__(self, message)
 
-@dataclass(frozen=True, init=False, eq=True)
-class Res(Generic[T, E], object):
+
+class ResDict(Generic[T, E], TypedDict):
+    """A dictionary version of a `Res`. Useful for when it needs to be pickled
+
+    ## Examples
+
+    >>> res_dict = Res.Some(10).to_dict()
+    >>> res_dict['ok']
+    10
+    >>> res_dict['is_err']
+    False
+    >>> res = Res.from_dict(res_dict)
+    >>> res.unwrap()
+    10
+    >>> res.is_err
+    False
+
+    """
+
+    ok: T | None
+    err: E | None
+    is_err: bool
+
+
+@dataclass(frozen=True, eq=True, match_args=True)
+class Res(Generic[T, E]):
     """Container used for capturing the outcome of something that could fail.
 
     Use the factory methods `Ok`, `Err`, or `Some` for construction instead of __init__.
-    
+
     Attributes:
         inner (T | E): The wrapped value, could be an Exception.
-    
+
     """
 
-    _inner: T | E
+    inner: T | E
     """The wrapped value, could be an Exception"""
-    _is_err: bool = field(repr=False)
-    """Whether the `Res` is an Exception. Only set on creation."""
-
-    __match_args__ = ("inner",)
+    is_err: bool
+    """Indicates if the `Res` is in err state"""
 
     def __repr__(self) -> str:
         if self.is_err:
@@ -55,17 +80,8 @@ class Res(Generic[T, E], object):
             return f"Ok(inner='{self.inner}')"
         return f"Ok(inner={self.inner})"
 
-    @property
-    def inner(self) -> T | E:
-        """The wrapped value.
-
-        Returns:
-            T | E: The wrapped value
-        """
-        return self._inner
-
-    @classmethod
-    def Ok(cls, value: U, err_type: type[F]) -> Res[U, F]:
+    @staticmethod
+    def Ok(value: T) -> Res[T, E]:
         """Creates a `Res` in an `Ok` state.
 
         Args:
@@ -74,23 +90,20 @@ class Res(Generic[T, E], object):
 
         Returns:
             Res[U, F]: The new `Res` in an `Ok` state
-        
+
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok = Res.Ok[int, Exception](10)
         >>> ok.is_err
         False
         >>> ok.is_ok
         True
 
         """
-        obj = object.__new__(cls)
-        object.__setattr__(obj, '_inner', value)
-        object.__setattr__(obj, '_is_err', False)
-        return obj
-    
-    @classmethod
-    def Err(cls, value: F, ok_type: type[U]) -> Res[U, F]:
+        return Res[T, E](value, True)
+
+    @staticmethod
+    def Err(value: E) -> Res[T, E]:
         """Creates a `Res` in an `Err` state
 
         Args:
@@ -102,7 +115,7 @@ class Res(Generic[T, E], object):
 
         Returns:
             Res[U, F]: The new `Res` in an `Err` state
-        
+
         ## Examples
 
         >>> err: Res[int, ValueError] = Res.Err(ValueError(), int)
@@ -115,18 +128,15 @@ class Res(Generic[T, E], object):
         ... except TypeError as e:
         ...     e
         ...
-        TypeError("Expected subclass of Exception but found str") 
+        TypeError("Expected subclass of Exception but found str")
 
         """
-        obj = object.__new__(cls)
         if not isinstance(value, Exception):
             raise TypeError(f"Expected subclass of Exception but found {value}")
-        object.__setattr__(obj, '_inner', value)
-        object.__setattr__(obj, '_is_err', True)
-        return obj
-    
+        return Res[T, E](value, False)
+
     @staticmethod
-    def Some(value: U | None) -> Opt[U]:
+    def Some(value: U | None) -> Res[U, Nil]:
         """Creates an `Opt[U]`, checking for None
 
         Args:
@@ -134,10 +144,10 @@ class Res(Generic[T, E], object):
 
         Returns:
             Opt[U]: A new `Res` that has checked for None
-        
+
         ## Examples
 
-        >>> some: Opt[int] = Res.Some(10)
+        >>> some: Res[int, NoneError] = Res.Some(10)
         >>> some.is_err
         False
         >>> some.is_ok
@@ -149,11 +159,11 @@ class Res(Generic[T, E], object):
         False
         """
         if value is None:
-            return Res.Err(NoneError(), U)
-        return Res.Ok(value, NoneError)
-    
+            return Res[U, Nil](Nil(), False)
+        return Res.Ok(value)
+
     @staticmethod
-    def Nil(some_type: type[U], nil_message: str | None = None) -> Opt[U]:
+    def Nil(nil_message: str | None = None) -> Res[T, Nil]:
         """Creates an `Opt[U]` in an Err state with Nil
 
         Args:
@@ -162,7 +172,7 @@ class Res(Generic[T, E], object):
 
         Returns:
             Opt[T]: A new Opt
-        
+
         ## Examples
 
         >>> nil: Opt[int] = Res.Nil(int, "Nothing was found")
@@ -171,15 +181,15 @@ class Res(Generic[T, E], object):
 
         """
         if nil_message is not None:
-            return Res.Err(NoneError(nil_message), some_type)
-        return Res.Err(NoneError(), some_type)
-    
-    def unpack(self) -> tuple[T | None, U | None]:
+            return Res.Err(Nil(nil_message))
+        return Res.Err(Nil())
+
+    def unpack(self) -> tuple[T, None] | tuple[None, E]:
         """Unpacks the `Res` a la Go for quick checking if desired
 
         Returns:
             Tuple[T | None, U | None]: The results as a tuple
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -192,54 +202,17 @@ class Res(Generic[T, E], object):
         """
         match self.is_err:
             case True:
-                return None, self.inner
+                return None, self.unwrap_err()
             case False:
-                return self.inner, None
-    
-    def some(self) -> Opt[T]:
-        """Converts the `Res` to an `Opt`, consuming the `E` value
+                return self.unwrap(), None
 
-        Returns:
-            Opt[T]: The new `Opt`
-        
-        ## Examples
-
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
-        >>> some: Opt[int] = ok.some()
-        >>> some.unwrap()
-        10
-
-        """
-        if self.is_err or self.inner is None:
-            return Res.Err(NoneError(), T)
-        return Res.Ok(self.inner, E)
-    
-    @property
-    def is_err(self) -> bool:
-        """Indicates if the `Res` is in err state
-
-        Returns:
-            bool: True if in Err, False if Ok
-        
-        ## Examples
-
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
-        >>> ok.is_err
-        False
-        >>> err: Res[int, Exception] = Res.Err(Exception(), int)
-        >>> err.is_err
-        True
-
-        """
-        return self._is_err
-    
     @property
     def is_ok(self) -> bool:
         """Indicates if the `Res` is in Ok state
 
         Returns:
             bool: True if Ok, False if Err
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -250,8 +223,8 @@ class Res(Generic[T, E], object):
         False
 
         """
-        return not self._is_err
-    
+        return not self.is_err
+
     def is_err_and(self, predicate: Callable[[E], bool]) -> bool:
         """Runs the predicate on the wrapped value if Err
 
@@ -272,7 +245,7 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            return predicate(self._inner)
+            return predicate(self.unwrap_err())
         return False
 
     def is_ok_and(self, predicate: Callable[[T], bool]) -> bool:
@@ -295,9 +268,9 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_ok:
-            return predicate(self._inner)
+            return predicate(self.unwrap())
         return False
-    
+
     def unwrap(self) -> T:
         """Returns wrapped value, or panics if Err
 
@@ -306,7 +279,7 @@ class Res(Generic[T, E], object):
 
         Returns:
             T: Returns wrapped value if Ok
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -318,9 +291,10 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_ok:
-            return self.inner
-        raise UnwrapError()
-    
+            return cast(T, self.inner)
+        else:
+            raise self.unwrap_err()
+
     def unwrap_err(self) -> E:
         """Returns wrapped Exception if Err, else panics
 
@@ -329,7 +303,7 @@ class Res(Generic[T, E], object):
 
         Returns:
             E: Returns wrapped Exception if Err
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -338,12 +312,12 @@ class Res(Generic[T, E], object):
         >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
         >>> err.unwrap_err()
         Exception('foo')
-        
+
         """
         if self.is_err:
-            return self.inner
-        raise UnwrapError('Unwrapped Err while in Ok state')
-    
+            return cast(E, self.inner)
+        raise UnwrapError("Unwrapped Err while in Ok state")
+
     def unwrap_or(self, default: T) -> T:
         """Returns wrapped value or default
 
@@ -365,8 +339,8 @@ class Res(Generic[T, E], object):
         """
         if self.is_err:
             return default
-        return self.inner
-    
+        return self.unwrap()
+
     def unwrap_or_else(self, default: Callable[[], T]) -> T:
         """Returns wrapped value or runs default
 
@@ -375,7 +349,7 @@ class Res(Generic[T, E], object):
 
         Returns:
             T: Wrapped value if Ok else output from default
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -388,8 +362,8 @@ class Res(Generic[T, E], object):
         """
         if self.is_err:
             return default()
-        return self.inner
-    
+        return self.unwrap()
+
     def expect(self, message: str) -> T:
         """Returns `inner` else raises ExpectError with custom message
 
@@ -414,8 +388,8 @@ class Res(Generic[T, E], object):
         """
         if self.is_err:
             raise ExpectError(message)
-        return self.inner
-    
+        return self.unwrap()
+
     def expect_err(self, message: str) -> E:
         """Returns wrapped Exception if Err else panics with ExpectError
 
@@ -439,15 +413,9 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            return self.inner
+            return self.unwrap_err()
         raise ExpectError(message)
-    
-    @overload
-    def map(self: Res[T, NoneError], using: Callable[[T], U]) -> Opt[U]: ...
 
-    @overload
-    def map(self: Res[T, E], using: Callable[[T], U]) -> Res[U, E]: ...
-    
     def map(self, using: Callable[[T], U]) -> Res[U, E]:
         """Changes inner if Ok with a function
 
@@ -456,7 +424,7 @@ class Res(Generic[T, E], object):
 
         Returns:
             Res[U, E]: Transformed `Res` if Ok
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -468,15 +436,9 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            return Res.Err(self.inner, T)
-        return Res.Ok(using(self.inner), E)
-    
-    @overload
-    def map_or(self: Res[T, NoneError], using: Callable[[T], U], default: U) -> Opt[U]: ...
+            return Res[U, E].Err(self.unwrap_err())
+        return Res[U, E].Ok(using(self.unwrap()))
 
-    @overload
-    def map_or(self: Res[T, E], using: Callable[[T], U], default: U) -> Res[U, E]: ...
-    
     def map_or(self, using: Callable[[T], U], default: U) -> Res[U, E]:
         """Changes inner if Ok or uses default if Err
 
@@ -498,15 +460,9 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            return Res.Ok(default, E)
-        return Res.Ok(using(self.inner), E)
-    
-    @overload
-    def replace(self: Res[T, NoneError], new: U) -> Opt[U]: ...
+            return Res[U, E].Ok(default)
+        return Res[U, E].Ok(using(self.q))
 
-    @overload
-    def replace(self: Res[T, E], new: U) -> Res[U, E]: ...
-    
     def replace(self, new: U) -> Res[U, E]:
         """Replaces the Ok value if Ok
 
@@ -515,7 +471,7 @@ class Res(Generic[T, E], object):
 
         Returns:
             Res[U, E]: The updated Res
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -526,8 +482,8 @@ class Res(Generic[T, E], object):
         Exception("foo")
 
         """
-        return self.and_(Res.Ok(new, E))
-    
+        return self.and_(Res[U, E].Ok(new))
+
     def replace_err(self, new: F) -> Res[T, F]:
         """Replaces the Err value with a new Exception if Err
 
@@ -536,7 +492,7 @@ class Res(Generic[T, E], object):
 
         Returns:
             Res[T, F]: The updated Res
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -548,15 +504,11 @@ class Res(Generic[T, E], object):
 
         """
 
-        return self.or_(Res.Err(new, T))
-    
-    @overload
-    def map_or_else(self: Res[T, NoneError], using: Callable[[T], U], default: Callable[[NoneError], U]) -> Opt[U]: ...
+        return self.or_(Res[T, F].Err(new))
 
-    @overload
-    def map_or_else(self: Res[T, E], using: Callable[[T], U], default: Callable[[E], U]) -> Res[U, E]: ...
-    
-    def map_or_else(self, using: Callable[[T], U], default: Callable[[E], U]) -> Res[U, E]:
+    def map_or_else(
+        self, using: Callable[[T], U], default: Callable[[E], U]
+    ) -> Res[U, E]:
         """Changes inner if Ok or with default func if Err
 
         Args:
@@ -577,9 +529,9 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            return Res.Ok(default(self.inner), E)
-        return Res.Ok(using(self.inner), E)
-    
+            return Res[U, E].Ok(default(self.unwrap_err()))
+        return Res[U, E].Ok(using(self.unwrap()))
+
     def map_err(self, using: Callable[[E], F]) -> Res[T, F]:
         """Changes the inner Exception if Err
 
@@ -588,7 +540,7 @@ class Res(Generic[T, E], object):
 
         Returns:
             Res[T, F]: Transformed `Res` if Err
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -600,9 +552,9 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            return Res.Err(using(self.inner), T)
-        return Res.Ok(self.inner, F)
-    
+            return Res[T, F].Err(using(self.unwrap_err()))
+        return Res[T, F].Ok(self.unwrap())
+
     def convert_err(self, err_type: type[F]) -> Res[T, F]:
         """Converts an Exception of one type to another if Err
 
@@ -611,7 +563,7 @@ class Res(Generic[T, E], object):
 
         Returns:
             Res[T, F]: A new Res with an updated Err value
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -623,10 +575,10 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            return Res.Err(err_type(str(self.inner)))
-        return Res.Ok(self.inner, F)
+            return Res[T, F].Err(err_type(str(self.unwrap_err())))
+        return Res[T, F].Ok(self.unwrap())
 
-    def and_then(self, using: Callable[[T], Res[U, F]]) -> Res[U, F]:
+    def and_then(self, using: Callable[[T], Res[U, F]]) -> Res[U, E | F]:
         """Returns a new Res using inner if Ok
 
         Args:
@@ -634,7 +586,7 @@ class Res(Generic[T, E], object):
 
         Returns:
             Res[U, E]: New `Res` using inner value
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -646,10 +598,10 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            return Res.Err(self.inner, U)
-        return using(self.inner)
-    
-    def or_else(self, using: Callable[[E], Res[U, F]]) -> Res[U, F]:
+            return Res[U, E | F].Err(self.unwrap_err())
+        return cast(Res[U, E | F], using(self.unwrap()))
+
+    def or_else(self, using: Callable[[E], Res[U, F]]) -> Res[T | U, F]:
         """Returns a new Res using inner Exception if Err
 
         Args:
@@ -669,10 +621,10 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            return using(self.inner)
-        return Res.Ok(self.inner, F)
-    
-    def and_(self, res: Res[U, F]) -> Res[U, F]:
+            return cast(Res[T | U, F], using(self.unwrap_err()))
+        return Res[T | U, F].Ok(self.unwrap())
+
+    def and_(self, res: Res[U, F]) -> Res[U, E | F]:
         """Replaces with a new `Res` if Ok
 
         Args:
@@ -692,10 +644,10 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            return Res.Err(self.inner, U)
-        return res
-    
-    def or_(self, res: Res[U, F]) -> Res[U, F]:
+            return Res[U, E | F].Err(self.unwrap_err())
+        return cast(Res[U, E | F], res)
+
+    def or_(self, res: Res[U, F]) -> Res[T | U, F]:
         """Replaces with a new `Res` if `Err`
 
         Args:
@@ -715,15 +667,9 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            return res
-        return Res.Ok(self.inner, F)
-    
-    @overload
-    def do(self: Res[T, NoneError], using: Callable[[T], U]) -> Opt[T]: ...
+            return cast(Res[T | U, F], res)
+        return Res[T | U, F].Ok(self.unwrap())
 
-    @overload
-    def do(self: Res[T, E], using: Callable[[T], U]) -> Res[T, E]: ...
-    
     def do(self, using: Callable[[T], U]) -> Res[T, E]:
         """Runs a function over inner if Ok, but stays the same
 
@@ -744,16 +690,10 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            return Res.Err(self.inner, T)
-        using(self.inner)
-        return Res.Ok(self.inner, E)
-    
-    @overload
-    def do_err(self: Res[T, NoneError], using: Callable[[NoneError], U]) -> Opt[T]: ...
+            return Res[T, E].Err(self.unwrap_err())
+        using(self.unwrap())
+        return Res[T, E].Ok(self.unwrap())
 
-    @overload
-    def do_err(self: Res[T, E], using: Callable[[E], U]) -> Res[T, E]: ...
-    
     def do_err(self, using: Callable[[E], U]) -> Res[T, E]:
         """Runs a function over inner if Err, but stays the same
 
@@ -774,14 +714,14 @@ class Res(Generic[T, E], object):
 
         """
         if self.is_err:
-            using(self.inner)
-            return Res.Err(self.inner, T)
-        return Res.Ok(self.inner, E)
-    
+            using(self.unwrap_err())
+            return Res[T, E].Err(self.unwrap_err())
+        return Res[T, E].Ok(self.unwrap())
+
     @property
     def q(self) -> T:
         """Shorthand for unwrap
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -793,11 +733,11 @@ class Res(Generic[T, E], object):
 
         """
         return self.unwrap()
-    
+
     @property
     def u(self) -> tuple[T | None, E | None]:
         """Shorthand for unpack
-        
+
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
@@ -815,93 +755,70 @@ class Res(Generic[T, E], object):
 
         """
         return self.unpack()
-    
-Opt: TypeAlias = Res[T, NoneError]
-"""Type alias for a `Res` that has checked for None. Uses the `Nil` Exception"""
 
-def Ok(value: T, err_type: type[E]) -> Res[T, E]:
-    """Creates a `Res` in an `Ok` state.
+    def to_dict(self) -> ResDict[T, E]:
+        """Converts to a typed dictionary with current data and type info
 
-        Args:
-            value (U): The value to be wrapped
-            other_type (type[F]): An Exception type if it were `Err`
+        Useful for when you need to pickle or serialize a Res
 
         Returns:
-            Res[U, F]: The new `Res` in an `Ok` state
-        
+            ResDict[T, E]: The dictionary version of the Res
+
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
-        >>> ok.is_err
+        >>> ok: Res[int, Nil] = Res.Some(10)
+        >>> res_dict: ResDict[int, Nil] = ok.to_dict()
+        >>> res_dict["is_err"]
         False
-        >>> ok.is_ok
-        True
+        >>> res_dict["ok"]
+        10
+        >>> res_dict["err"]
+        None
 
-    """
-    return Res.Ok(value, err_type)
+        """
+        if self.is_err:
+            return ResDict[T, E](ok=None, err=self.unwrap_err(), is_err=True)
+        else:
+            return ResDict[T, E](ok=self.unwrap(), err=None, is_err=False)
 
-def Err(value: E, ok_type: type[T]) -> Res[T, E]:
-    """Creates a `Res` in an `Err` state
+    @staticmethod
+    def from_dict(res_dict: ResDict[U, F]) -> Res[U, F]:
+        """Creates a Res from a ResDict or dictionary that follows the same schema
 
         Args:
-            value (F): The captured Exception to be wrapped
-            other_type (type[U]): The type if it were `Ok`k
+            res_dict (ResDict[U, F]): A dict that follows the ResDict schema, or an actual ResDict
 
         Raises:
-            TypeError: Raised if the value is not bound to `Exception`
+            Nil: Raised if is_err is True and err is None
+            Nil: Raised if is_err is False and ok is None
 
         Returns:
-            Res[U, F]: The new `Res` in an `Err` state
-        
+            Res[U, F]: A Res with the same values as the dictionary
+
         ## Examples
 
-        >>> err: Res[int, ValueError] = Res.Err(ValueError(), int)
-        >>> err.is_err
-        True
-        >>> err.is_ok
+        >>> res_dict: ResDict[int, Nil] = ResDict(ok=10, err=None, is_err=False)
+        >>> ok: Res[int, Nil] = Res.from_dict(res_dict)
+        >>> ok.unwrap()
+        10
+        >>> ok.is_err
         False
-        >>> Res.Err("Not an Exception", int)
-        TypeError("Expected subclass of Exception but found str") 
 
-    """
-    return Res.Err(value, ok_type)
+        """
+        match res_dict["is_err"]:
+            case True:
+                match res_dict["err"]:
+                    case None:
+                        raise Nil()
+                    case err:
+                        return Res[U, F].Err(err)
+            case False:
+                match res_dict["ok"]:
+                    case None:
+                        raise Nil()
+                    case ok:
+                        return Res[U, F].Ok(ok)
 
-def Some(value: T | None) -> Opt[T]:
-    """Creates an `Opt[U]`, checking for None
-
-        Args:
-            value (U | None): Value that could be None
-
-        Returns:
-            Opt[U]: A new `Res` that has checked for None
-        
-        ## Examples
-
-        >>> some: Opt[int] = Res.Some(10)
-        >>> some.is_err
-        False
-        >>> some.is_ok
-        True
-        >>> nil = Res.Some(None)
-        >>> nil.is_err
-        True
-        >>> nil.is_ok
-        False
-    """
-    return Res.Some(value)
-
-def Nil(some_type: type[T], nil_message: str | None = None) -> Opt[T]:
-    """Creates an `Opt[U]` in an Err state with Nil
-
-        Args:
-            some_type (type[U]): The type if it were something
-            nil_message (str | None, optional): Message for Nil Exception. Defaults to None.
-
-        Returns:
-            Opt[T]: A new Opt
-        
-    """
-    return Res.Nil(some_type, nil_message)
 
 def safe(*err_type: type[E]):
     """Decorator function to catch raised ``Exception`` and return ``Res[T, E]``
@@ -913,7 +830,7 @@ def safe(*err_type: type[E]):
         Multiple ``Exception``s can be specified in the first call
 
     Args:
-        *err_type* (type[E]): *Args tuple of ``Exception`` types to catch
+        *err_type* (type[E]): Args tuple of ``Exception`` types to catch
         *using* ((P) -> U): Any function with typed arguments and return values
 
     Returns:
@@ -940,9 +857,9 @@ def safe(*err_type: type[E]):
         @wraps(using)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[U, E]:
             try:
-                return Res.Ok(using(*args, **kwargs), E)
+                return Res[U, E].Ok(using(*args, **kwargs))
             except err_type as e:
-                return Res.Err(e, U)
+                return Res[U, E].Err(e)
 
         return wrapper
 
@@ -972,7 +889,7 @@ def null_safe(using: Callable[P, U | None]):
     """
 
     @wraps(using)
-    def inner(*args: P.args, **kwargs: P.kwargs) -> Opt[U]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> Res[U, Nil]:
         return Res.Some(using(*args, **kwargs))
 
     return inner
@@ -1002,18 +919,18 @@ def null_and_error_safe(*err_types: type[E]):
 
     def inner(using: Callable[P, T | None]):
         @wraps(using)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Opt[T]:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[T, Nil]:
             try:
                 return Res.Some(using(*args, **kwargs))
             except err_types as e:
-                return Res.Err(e, T).some()
+                return Res[T, Nil](Nil(), False)
 
         return wrapper
 
     return inner
 
 
-def combine_errors(to: F, inherit_message: bool = False):
+def combine_errors(to: type[F], inherit_message: bool = False):
     """Decorator to combine funcs that return Res to return one error instead of many
 
     Args:
@@ -1043,7 +960,7 @@ def combine_errors(to: F, inherit_message: bool = False):
         @wraps(using)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Res[T, F]:
             return using(*args, **kwargs).map_err(
-                lambda e: to.__class__(str(e)) if inherit_message else to
+                lambda e: to(str(e)) if inherit_message else to()
             )
 
         return wrapper
