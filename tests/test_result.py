@@ -1,4 +1,5 @@
 from unittest import TestCase
+import pickle
 from pythonix.prelude import *
 from typing import Callable
 from pythonix.internals.res import safe
@@ -188,3 +189,38 @@ class TestDunderMethods(TestCase):
 
         for _ in self.err:
             self.fail()
+
+class TestPickle(TestCase):
+
+    ok: Res[int, Exception]
+    err: Res[int, Exception]
+
+    def setUp(self) -> None:
+        self.ok = Res[int, Exception].Ok(10)
+        self.err = Res[int, Exception].Err(Exception("foo"))
+    
+    def test_pickle_ok(self):
+        with open('ok.pickle', 'wb') as f:
+            pickle.dump(self.ok, f, pickle.HIGHEST_PROTOCOL)
+        
+        with open('ok.pickle', 'rb') as f:
+            res: Res[int, Exception] = pickle.load(f)
+        
+        match res:
+            case Res(int(val)):
+                ...
+            case Res(e) if isinstance(e, Exception):
+                self.fail(str(e))
+
+    def test_pickle_err(self):
+        with open('err.pickle', 'wb') as f:
+            pickle.dump(self.err, f, pickle.HIGHEST_PROTOCOL)
+        
+        with open('err.pickle', 'rb') as f:
+            res: Res[int, Exception] = pickle.load(f)
+        
+        match res:
+            case Res(int(val)):
+                self.fail('Expected Err')
+            case Res(e) if isinstance(e, Exception):
+                ...
