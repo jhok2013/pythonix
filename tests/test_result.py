@@ -118,3 +118,73 @@ class TestOpt(TestCase):
         self.assertEqual(Res.Some(10).unwrap(), 10)
         self.assertIsInstance(Res.Some(None).unwrap_err(), Nil)
     
+
+class TestDunderMethods(TestCase):
+
+    ok: Res[int, Exception]
+    err: Res[int, Exception]
+
+    def setUp(self) -> None:
+        self.ok = Res[int, Exception].Ok(10)
+        self.err = Res[int, Exception].Err(Exception("foo"))
+    
+    def test_eq(self) -> None:
+        self.assertEqual(self.ok, self.ok)
+        self.assertNotEqual(self.ok, self.ok.map(lambda x: x + 1))
+        self.assertEqual(self.err, self.err)
+        self.assertNotEqual(self.err, self.err.convert_err(ValueError))
+        self.assertNotEqual(self.err, self.err.map_err(lambda _: Exception('bar')))
+    
+    def test_lt(self) -> None:
+        self.assertTrue(self.ok.map(lambda x: x - 1) < self.ok)
+        self.assertFalse(self.ok < self.err)
+        self.assertTrue(self.ok < self.ok.map(lambda x: x + 1))
+    
+    def test_le(self) -> None:
+        self.assertLessEqual(self.ok.map(lambda x: x - 1), self.ok)
+        self.assertLessEqual(self.ok, self.ok)
+    
+    def test_gt(self) -> None:
+        self.assertGreater(self.ok.map(lambda x: x + 1), self.ok)
+        self.assertFalse(self.ok > self.err)
+    
+    def test_ge(self) -> None:
+        self.assertGreaterEqual(self.ok, self.ok)
+        self.assertFalse(self.ok >= self.err)
+    
+    def test_bool(self) -> None:
+        self.assertFalse(bool(self.err))
+        self.assertTrue(bool(self.ok))
+
+        if self.ok:
+            ...
+        
+        if self.err:
+            self.fail()
+    
+    def test_contains(self) -> None:
+        if 10 in self.ok.map(lambda x: [x]):
+            ...
+        else:
+            self.fail()
+        
+        if 10 in self.ok:
+            ...
+        else:
+            self.fail()
+    
+    def test_iter(self):
+        for element in self.ok.map(lambda x: [x]):
+            self.assertEqual(element, self.ok.unwrap())
+        
+        for element in self.ok.map(lambda x: (x,)):
+            self.assertEqual(element, self.ok.unwrap())
+
+        for element in self.ok.map(lambda x: {x}):
+            self.assertEqual(element, self.ok.unwrap())
+        
+        for ok in self.ok:
+            self.assertEqual(ok, self.ok.unwrap())
+
+        for _ in self.err:
+            self.fail()

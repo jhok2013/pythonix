@@ -1,13 +1,23 @@
 """Gracefully handle Errors and None as result values. Catch them as values with decorators."""
 
 from __future__ import annotations
-from typing import Generic, TypeVar, Callable, TypeAlias, ParamSpec, cast, overload
+from typing import (
+    Generic,
+    TypeVar,
+    Callable,
+    ParamSpec, cast,
+    Iterator,
+    overload,
+)
 from typing_extensions import TypedDict
 from dataclasses import dataclass
 from functools import wraps
 
 P = ParamSpec("P")
 T = TypeVar("T")
+K = TypeVar("K")
+V = TypeVar("V")
+T_co = TypeVar("T_co", covariant=True)
 E = TypeVar("E", bound="Exception")
 F = TypeVar("F", bound="Exception")
 U = TypeVar("U")
@@ -54,35 +64,165 @@ class ResDict(Generic[T, E], TypedDict):
 
     ok: T | None
     err: E | None
-    is_err: bool
+    is_ok: bool
 
 
-@dataclass(frozen=True, eq=True, match_args=True)
+@dataclass(frozen=True, eq=True, match_args=True, repr=True)
 class Res(Generic[T, E]):
     """Container used for capturing the outcome of something that could fail.
 
-    Use the factory methods `Ok`, `Err`, or `Some` for construction instead of __init__.
+    Use `Ok`, `Err`, `Some`, or `Nil` for construction instead of __init__. ::
 
-    Attributes:
-        inner (T | E): The wrapped value, could be an Exception.
+        >>> ok: Res[int, Exception] = Res[int, Exception].Ok(10)
+        >>> err: Res[int, Exception] = Res[int, Exception].Err(Exception("foo"))
+        >>> some: Res[int, Nil] = Res.Some(10)
+
+    Using `==` and `!=` is safe and will work between `Res` in different states. ::
+
+        >>> ok == ok
+        True
+        >>> err != ok
+        True
+        >>> ok != Res[int, ValueError].Ok(11)
+        False
+
+    Comparisons can be made between same states, returning False for different states. ::
+
+        >>> ok > Res[int, ValueError].Ok(9) 
+        True
+        >>> ok > err
+        False
+        >>> ok >= ok
+        True
+        >>> ok <= ok
+        True
+
+    Iterating on `Res` is a way to perform operations if `Ok` or do nothing if `Err` ::
+
+        >>> for val in ok:
+        ...     val
+        10
+        ...
+        >>> for val in err:
+        ...     val
+        ...
+        >>> # Does nothing because it failed
+    
+    Will automatically iterate over Ok list, tuple, and set objects ::
+
+        >>> iter_ok = Res[list[int], ValueError].Ok([10, 20])
+        >>> total: int = 0
+        >>> for val in iter_ok:
+        ...     total += val
+        >>> total
+        30
 
     """
 
     inner: T | E
     """The wrapped value, could be an Exception"""
-    is_err: bool
+    is_ok: bool
     """Indicates if the `Res` is in err state"""
 
-    def __repr__(self) -> str:
+    def __nonzero__(self) -> bool:
+        return self.is_ok
+    
+    def __bool__(self) -> bool:
+        return self.is_ok
+    
+    def __str__(self) -> str:
         if self.is_err:
-            return f"Err(inner={self.inner})"
+            match self.unwrap_err():
+                case e:
+                    return f"Err(inner={e.__class__.__name__}('{str(e)}'))"
         if isinstance(self.inner, str):
             return f"Ok(inner='{self.inner}')"
         return f"Ok(inner={self.inner})"
+    
+    def __contains__(self, item) -> bool:
+        if self.is_err:
+            return False
+        if hasattr(self.inner, '__iter__') or hasattr(self.inner, '__contains__'):
+            return item in self.inner
+        else:
+            return item in [self.inner]
+    
+    @overload
+    def __iter__(self: Res[tuple[U], E]) -> Iterator[U]: ...
 
+    @overload
+    def __iter__(self: Res[list[U], E]) -> Iterator[U]: ...
+
+    @overload
+    def __iter__(self: Res[set[U], E]) -> Iterator[U]: ...
+
+    @overload
+    def __iter__(self: Res[U, E]) -> Iterator[U]: ...
+
+    def __iter__(self):
+        if self.is_err:
+            return iter([]) 
+        match self.unwrap():
+            case list(data) | tuple(data) | set(data):
+                return iter(data)
+            case x:
+                return iter([x])
+        
+    def __lt__(self, other: object) -> bool:
+        method_name: str = '__lt__'
+        opposite_name: str = '__gt__'
+        match other:
+            case Res(inner, is_ok) if is_ok == self.is_ok:
+                if hasattr(self.inner, method_name):
+                    return self.inner < inner
+                if hasattr(self.inner, opposite_name):
+                    return not self.inner > inner
+                raise TypeError(f'No comparison possible between {type(self.inner)} and {type(inner)}')
+            case _:
+                return False
+    
+    def __le__(self, other: object) -> bool:
+        method_name: str = '__le__'
+        opposite_name: str = '__ge__'
+        match other:
+            case Res(inner, is_ok) if is_ok == self.is_ok:
+                if hasattr(self.inner, method_name):
+                    return self.inner <= inner
+                if hasattr(self.inner, opposite_name):
+                    return not self.inner >= inner
+                raise TypeError(f'No comparison possible between {type(self.inner)} and {type(inner)}')
+            case _:
+                return False
+    
+    def __ge__(self, other: object) -> bool:
+        method_name: str = '__ge__'
+        opposite_name: str = '__le__'
+        match other:
+            case Res(inner, is_ok) if is_ok == self.is_ok:
+                if hasattr(self.inner, method_name):
+                    return self.inner >= inner
+                if hasattr(self.inner, opposite_name):
+                    return not self.inner <= inner
+                raise TypeError(f'No comparison possible between {type(self.inner)} and {type(inner)}')
+            case _:
+                return False
+    
+    def __gt__(self, other: object) -> bool:
+        method_name: str = '__gt__'
+        opposite_name: str = '__lt__'
+        match other:
+            case Res(inner, is_ok) if is_ok == self.is_ok:
+                if hasattr(self.inner, method_name):
+                    return self.inner > inner
+                if hasattr(self.inner, opposite_name):
+                    return not self.inner < inner
+                raise TypeError(f'No comparison possible between {type(self.inner)} and {type(inner)}')
+            case _:
+                return False
+ 
     @staticmethod
     def Ok(value: T) -> Res[T, E]:
-        """Creates a `Res` in an `Ok` state.
+        """Creates a `Res` in an `Ok` state. Cannot receive a child of `Exception`
 
         Args:
             value (U): The value to be wrapped
@@ -100,7 +240,9 @@ class Res(Generic[T, E]):
         True
 
         """
-        return Res[T, E](value, False)
+        if isinstance(value, Exception):
+            raise TypeError(f"Cannot pass an Exception child to Ok")
+        return Res[T, E](value, True)
 
     @staticmethod
     def Err(value: E) -> Res[T, E]:
@@ -133,7 +275,7 @@ class Res(Generic[T, E]):
         """
         if not isinstance(value, Exception):
             raise TypeError(f"Expected subclass of Exception but found {value}")
-        return Res[T, E](value, True)
+        return Res[T, E](value, False)
 
     @staticmethod
     def Some(value: U | None) -> Res[U, Nil]:
@@ -207,23 +349,23 @@ class Res(Generic[T, E]):
                 return self.unwrap(), None
 
     @property
-    def is_ok(self) -> bool:
-        """Indicates if the `Res` is in Ok state
+    def is_err(self) -> bool:
+        """Indicates if the `Res` is in Err state
 
         Returns:
-            bool: True if Ok, False if Err
+            bool: True if Err, False if Ok
 
         ## Examples
 
         >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
-        >>> ok.is_ok
-        True
-        >>> err: Res[int, Exception] = Res.Err(Exception(), int)
-        >>> err.is_ok
+        >>> ok.is_err
         False
+        >>> err: Res[int, Exception] = Res.Err(Exception(), int)
+        >>> err.is_err
+        True
 
         """
-        return not self.is_err
+        return not self.is_ok
 
     def is_err_and(self, predicate: Callable[[E], bool]) -> bool:
         """Runs the predicate on the wrapped value if Err
@@ -777,9 +919,9 @@ class Res(Generic[T, E]):
 
         """
         if self.is_err:
-            return ResDict[T, E](ok=None, err=self.unwrap_err(), is_err=True)
+            return ResDict[T, E](ok=None, err=self.unwrap_err(), is_ok=False)
         else:
-            return ResDict[T, E](ok=self.unwrap(), err=None, is_err=False)
+            return ResDict[T, E](ok=self.unwrap(), err=None, is_ok=True)
 
     @staticmethod
     def from_dict(res_dict: ResDict[U, F]) -> Res[U, F]:
@@ -805,14 +947,14 @@ class Res(Generic[T, E]):
         False
 
         """
-        match res_dict["is_err"]:
-            case True:
+        match res_dict["is_ok"]:
+            case False:
                 match res_dict["err"]:
                     case None:
                         raise Nil()
                     case err:
                         return Res[U, F].Err(err)
-            case False:
+            case True:
                 match res_dict["ok"]:
                     case None:
                         raise Nil()
