@@ -87,6 +87,15 @@ class Res(Generic[T, E]):
         >>> ok != Res[int, ValueError].Ok(11)
         False
 
+    In can be used to check the value if Ok or check for its presence in an iterable::
+
+        >>> 10 in ok
+        True
+        >>> 10 in Res[list[int], ValueError].Ok([0, 1, 2, 3])
+        False
+        >>> 10 in err
+        False
+
     Comparisons can be made between same states, returning False for different states. ::
 
         >>> ok > Res[int, ValueError].Ok(9)
@@ -117,6 +126,35 @@ class Res(Generic[T, E]):
         ...     total += val
         >>> total
         30
+    
+    Can do pattern matching with a little help ::
+
+        >>> match ok:
+        ...     case Res(int(val)):
+        ...         val
+        ...     case Res(err):
+        ...         pass
+        10
+    
+    If it is Ok then it is also True, if Err it is also False ::
+
+        >>> if ok:
+        ...     True
+        True
+        >>> if not ok:
+        ...     False
+        False
+    
+    Unpack it like in Go using `unpack` or `u` for short
+
+        >>> val, nil = ok.unpack()
+        >>> if nil is not None:
+        ...     pass # Do something here
+        >>> val
+        10
+        >>> val, nil = err.u
+        >>> val
+        None
 
     """
 
