@@ -53,8 +53,8 @@ class ResDict(Generic[T, E], TypedDict):
     >>> res_dict = Res.Some(10).to_dict()
     >>> res_dict['ok']
     10
-    >>> res_dict['is_err']
-    False
+    >>> res_dict['is_ok']
+    True
     >>> res = Res.from_dict(res_dict)
     >>> res.unwrap()
     10
@@ -112,7 +112,6 @@ class Res(Generic[T, E]):
         >>> for val in ok:
         ...     val
         10
-        ...
         >>> for val in err:
         ...     val
         ...
@@ -138,10 +137,10 @@ class Res(Generic[T, E]):
     
     If it is Ok then it is also True, if Err it is also False ::
 
-        >>> if ok:
+        >>> if bool(ok):
         ...     True
         True
-        >>> if not ok:
+        >>> if not err:
         ...     False
         False
     
@@ -153,8 +152,8 @@ class Res(Generic[T, E]):
         >>> val
         10
         >>> val, nil = err.u
-        >>> val
-        None
+        >>> val is None
+        True
 
     """
 
@@ -284,7 +283,7 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok = Res.Ok[int, Exception](10)
+        >>> ok = Res[int, Exception].Ok(10)
         >>> ok.is_err
         False
         >>> ok.is_ok
@@ -311,17 +310,17 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> err: Res[int, ValueError] = Res.Err(ValueError(), int)
+        >>> err: Res[int, ValueError] = Res[int, ValueError].Err(ValueError())
         >>> err.is_err
         True
         >>> err.is_ok
         False
         >>> try:
-        ...     Res.Err("Not an Exception", int)
+        ...     Res[int, Exception].Err("Not an Exception")
         ... except TypeError as e:
         ...     e
         ...
-        TypeError("Expected subclass of Exception but found str")
+        TypeError('Expected subclass of Exception but found Not an Exception')
 
         """
         if not isinstance(value, Exception):
@@ -330,17 +329,17 @@ class Res(Generic[T, E]):
 
     @staticmethod
     def Some(value: U | None) -> Res[U, Nil]:
-        """Creates an `Opt[U]`, checking for None
+        """Creates an `Res[U, Nil]`, checking for None
 
         Args:
             value (U | None): Value that could be None
 
         Returns:
-            Opt[U]: A new `Res` that has checked for None
+            Res[U, Nil]: A new `Res` that has checked for None
 
         ## Examples
 
-        >>> some: Res[int, NoneError] = Res.Some(10)
+        >>> some: Res[int, Nil] = Res.Some(10)
         >>> some.is_err
         False
         >>> some.is_ok
@@ -364,13 +363,13 @@ class Res(Generic[T, E]):
             nil_message (str | None, optional): Message for Nil Exception. Defaults to None.
 
         Returns:
-            Opt[T]: A new Opt
+            Res[T, Nil]: A new Res in Err state
 
         ## Examples
 
-        >>> nil: Opt[int] = Res.Nil(int, "Nothing was found")
+        >>> nil: Res[int, Nil] = Res.Nil("Nothing was found")
         >>> nil.unwrap_err()
-        NoneError("Nothing was found")
+        Nil(Nil(...), 'Nothing was found')
 
         """
         if nil_message is not None:
@@ -385,7 +384,7 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> val, err = ok.unpack()
         >>> err is None
         True
@@ -408,10 +407,10 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.is_err
         False
-        >>> err: Res[int, Exception] = Res.Err(Exception(), int)
+        >>> err: Res[int, Exception] = Res.Err(Exception())
         >>> err.is_err
         True
 
@@ -429,12 +428,12 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.is_err_and(lambda e: e.message == "foo")
         False
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
-        >>> err.is_err_and(lambda e: e.message == "foo")
-        False
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
+        >>> err.is_err_and(lambda e: str(e) == "foo")
+        True
 
         """
         if self.is_err:
@@ -452,10 +451,10 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.is_ok_and(lambda x: x > 1)
         True
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
         >>> err.is_ok_and(lambda x: x > 1)
         False
 
@@ -475,12 +474,14 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res[int, Exception].Ok(10)
         >>> ok.unwrap()
         10
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        >>> err: Res[int, Exception] = Res[int, Exception].Err(Exception("foo"))
         >>> err.unwrap()
-        UnwrapError("Unwrapped while in an Err state")
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+        Exception: foo
 
         """
         if self.is_ok:
@@ -499,10 +500,12 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res[int, Exception].Ok(10)
         >>> ok.unwrap_err()
-        UnwrapError('Unwrapped Err while in Ok state')
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+        res.UnwrapError: (UnwrapError(...), 'Unwrapped Err while in Ok state')
+        >>> err: Res[int, Exception] = Res[int, Exception].Err(Exception("foo"))
         >>> err.unwrap_err()
         Exception('foo')
 
@@ -522,10 +525,10 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res[int, Exception].Ok(10)
         >>> ok.unwrap_or(0)
         10
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        >>> err: Res[int, Exception] = Res[int, Exception].Err(Exception("foo"))
         >>> err.unwrap_or(0)
         0
 
@@ -545,10 +548,10 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.unwrap_or_else(lambda: 0)
         10
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
         >>> err.unwrap_or_else(lambda: 0)
         0
 
@@ -571,12 +574,14 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.expect("Failed")
         10
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
         >>> err.expect("Failed")
-        ExpectError("Failed")
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+        res.ExpectError: (ExpectError(...), 'Failed')
 
         """
         if self.is_err:
@@ -597,12 +602,14 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.expect_err("Expected Exception")
-        ExpectError("Expected Exception")
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+        res.ExpectError: (ExpectError(...), 'Expected Exception')
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
         >>> err.unwrap_err()
-        Exception("foo")
+        Exception('foo')
 
         """
         if self.is_err:
@@ -620,12 +627,12 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.map(lambda x: x + 5).unwrap()
         15
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
         >>> err.map(lambda x: x + 5).unwrap_err()
-        Exception("foo")
+        Exception('foo')
 
         """
         if self.is_err:
@@ -644,10 +651,10 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.map_or(lambda x: x + 5, 20).unwrap()
         15
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
         >>> err.map_or(lambda x: x + 5, 20).unwrap()
         20
 
@@ -667,12 +674,14 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.replace(20).unwrap()
         20
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
-        >>> ok.replace(20).unwrap()
-        Exception("foo")
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
+        >>> err.replace(20).unwrap()
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+        Exception: foo
 
         """
         return self.and_(Res[U, E].Ok(new))
@@ -688,11 +697,11 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.replace_err(ValueError("bar")).unwrap()
-        20
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
-        >>> ok.replace_err(ValueError("bar")).unwrap_err()
+        10
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
+        >>> err.replace_err(ValueError("bar")).unwrap_err()
         ValueError('bar')
 
         """
@@ -713,11 +722,11 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.map_or_else(lambda x: x + 5, lambda e: 20).unwrap()
         15
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
-        >>> err.map(lambda x: x + 5, lambda e: 20).unwrap()
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
+        >>> err.map_or_else(lambda x: x + 5, lambda e: 20).unwrap()
         20
 
         """
@@ -736,12 +745,14 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.map_err(lambda e: ValueError(str(e))).unwrap_err()
-        UnwrapError("Expected Err but found Ok")
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+        res.UnwrapError: (UnwrapError(...), 'Unwrapped Err while in Ok state')
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
         >>> err.map_err(lambda e: ValueError(str(e))).unwrap_err()
-        ValueError("foo")
+        ValueError('foo')
 
         """
         if self.is_err:
@@ -759,12 +770,12 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.convert_err(ValueError).unwrap()
         10
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
-        >>> err.convert_error(ValueError).unwrap_err()
-        ValueError("foo")
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
+        >>> err.convert_err(ValueError).unwrap_err()
+        ValueError('foo')
 
         """
         if self.is_err:
@@ -782,12 +793,12 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
-        >>> ok.and_then(lambda x: Res.Ok(x + 10, Exception)).unwrap()
+        >>> ok: Res[int, Exception] = Res.Ok(10)
+        >>> ok.and_then(lambda x: Res.Ok(x + 10)).unwrap()
         20
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
         >>> err.and_then(lambda x: Res.Ok(x + 10, Exception)).unwrap_err()
-        Exception("foo")
+        Exception('foo')
 
         """
         if self.is_err:
@@ -805,11 +816,11 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
-        >>> ok.or_else(lambda e: Res.Err(ValueError(str(e)), int)).unwrap()
+        >>> ok: Res[int, Exception] = Res.Ok(10)
+        >>> ok.or_else(lambda e: Res.Err(ValueError(str(e)))).unwrap()
         10
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
-        >>> err.or_else(lambda e: Res.Ok(20, ValueError(str(e)))).unwrap()
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
+        >>> err.or_else(lambda e: Res.Ok(20)).unwrap()
         20
 
         """
@@ -828,12 +839,12 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
-        >>> ok.and_(Res.Ok(20, ValueError)).unwrap()
+        >>> ok: Res[int, Exception] = Res.Ok(10)
+        >>> ok.and_(Res.Ok(20)).unwrap()
         20
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
-        >>> err.and_(Res.Ok(20, ValueError)).unwrap_err()
-        Exception("foo")
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
+        >>> err.and_(Res.Ok(20)).unwrap_err()
+        Exception('foo')
 
         """
         if self.is_err:
@@ -851,11 +862,11 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
-        >>> ok.or_(Res.Ok(20, ValueError)).unwrap()
+        >>> ok: Res[int, Exception] = Res.Ok(10)
+        >>> ok.or_(Res.Ok(20)).unwrap()
         10
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
-        >>> err.or_(Res.Ok(20, ValueError)).unwrap()
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
+        >>> err.or_(Res.Ok(20)).unwrap()
         20
 
         """
@@ -874,12 +885,14 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.do(lambda x: x + 10).unwrap()
         10
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
         >>> err.do(lambda x: x + 10).unwrap()
-        Exception("foo")
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+        Exception: foo
 
         """
         if self.is_err:
@@ -898,12 +911,14 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.do_err(lambda e: str(e)).unwrap_err()
-        UnwrapError("Expected Err state but found Ok")
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        Traceback (most recent call last):
+          File "stdin", line 1, in <module>
+        res.UnwrapError: (UnwrapError(...), 'Unwrapped Err while in Ok state')
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
         >>> err.do_err(str).unwrap_err()
-        Exception("foo")
+        Exception('foo')
 
         """
         if self.is_err:
@@ -917,12 +932,14 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> ok.q
         10
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
         >>> err.q
-        Exception("foo")
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+        Exception: foo
 
         """
         return self.unwrap()
@@ -933,16 +950,16 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> ok: Res[int, Exception] = Res.Ok(10, Exception)
+        >>> ok: Res[int, Exception] = Res.Ok(10)
         >>> val, err = ok.u
         >>> val
         10
-        >>> err
-        None
-        >>> err: Res[int, Exception] = Res.Err(Exception("foo"), int)
+        >>> err is None
+        True
+        >>> err: Res[int, Exception] = Res.Err(Exception("foo"))
         >>> val, err = err.u
-        >>> val
-        None
+        >>> val is None
+        True
         >>> err
         Exception('foo')
 
@@ -961,12 +978,12 @@ class Res(Generic[T, E]):
 
         >>> ok: Res[int, Nil] = Res.Some(10)
         >>> res_dict: ResDict[int, Nil] = ok.to_dict()
-        >>> res_dict["is_err"]
-        False
+        >>> res_dict["is_ok"]
+        True
         >>> res_dict["ok"]
         10
-        >>> res_dict["err"]
-        None
+        >>> res_dict["err"] is None
+        True
 
         """
         if self.is_err:
@@ -990,12 +1007,20 @@ class Res(Generic[T, E]):
 
         ## Examples
 
-        >>> res_dict: ResDict[int, Nil] = ResDict(ok=10, err=None, is_err=False)
-        >>> ok: Res[int, Nil] = Res.from_dict(res_dict)
-        >>> ok.unwrap()
+        >>> res_dict: ResDict[int, Nil] = ResDict(ok=10, err=None, is_ok=True)
+        >>> res_dict["is_ok"]
+        True
+        >>> res_dict["ok"]
         10
-        >>> ok.is_err
+        >>> res_dict["err"] is None
+        True
+        >>> res: Res[int, Nil] = Res.from_dict(res_dict)
+        >>> res.is_ok
+        True
+        >>> res.is_err
         False
+        >>> res.unwrap()
+        10
 
         """
         match res_dict["is_ok"]:
@@ -1137,15 +1162,15 @@ def combine_errors(to: type[F], inherit_message: bool = False):
 
     Examples: ::
 
-        >>> @combine_errors(Nil())
-        >>> @safe(KeyError, IndexError)
+        >>> @combine_errors(Nil)
+        ... @safe(KeyError, IndexError)
         ... def get(index: str, data: dict[str, str]) -> str:
         ...     return data[index]
         ...
         >>> data: dict[str, str] = {'hello': 'world'}
         >>> element: Opt[str] = get('hola', data)
         >>> element.unwrap_err()
-        Nil('Did not expect None')
+        Nil(Nil(...), 'Found None while expecting something')
 
     """
 
@@ -1155,7 +1180,6 @@ def combine_errors(to: type[F], inherit_message: bool = False):
             return using(*args, **kwargs).map_err(
                 lambda e: to(str(e)) if inherit_message else to()
             )
-
         return wrapper
 
     return inner

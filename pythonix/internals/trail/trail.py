@@ -143,6 +143,19 @@ L = TypeVar("L", bound="Log")
 
 @dataclass(repr=True)
 class Trail(Generic[T]):
+    """A concatenated log of Log messages with a wrapped value. Provides methods to accumualate Logs
+    
+    ## Examples
+
+    >>> log_trail: Trail[int] = Trail(10, [Info("Starting with 10")])
+    >>> log_trail = log_trail.map(lambda val: val + 10, Info("Added ten again"))
+    >>> log_trail.logs.pop()
+    Info('Added ten again')
+    >>> log_trail.inner()
+    20
+
+    """
+
     inner: T
     """The wrapped value inside the Trail"""
     iterable: InitVar[Iterable[Log]]

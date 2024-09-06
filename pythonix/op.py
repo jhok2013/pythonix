@@ -20,9 +20,8 @@ Examples:
 
     Getting and Assigning: ::
 
-        >>> from pythonix.internals.res import unpack
         >>> data = [1, 2, 3]
-        >>> val, err = unpack(item(2)(data))
+        >>> val, err = item(2)(data).unpack()
         >>> val
         3
     

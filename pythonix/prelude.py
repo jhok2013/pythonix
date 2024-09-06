@@ -1,38 +1,12 @@
 """Essential functions and types for using the pythonix modules
 
-Classes:
+Imported types include
 
-    * Piper: Pipe wrapper do sequential calls with >>>, |, and >
-    * P: Pipe operator object like `|>` in Julia and Gleam
-    * Ok: Indicates a successful response
-    * Err: Indicates an unsuccessful response
-    * Nil: Exception class indicating an unexpected None
-
-Funcs:
-
-    * fn: Util for creating typed lambda functions
-    * q: Alias for res.unwrap
-    * qe: Alias for res.unwrap_err
-    * ok: Util for creating typed Ok | Err objects as Ok
-    * err: Util for creating typed Ok | Err objets as Err
-    * unpack: Converts Ok | Err to an unpackable tuple
-
-Types:
-
-    * Res: Alias for Ok[T] | Err[E]
-    * Opt: Alias for Ok[T] | Err[Nil]
-
-Modules:
-
-    * res: utils for handling Ok or Err results
-    * trail: Log concatenation
-    * op: Partial functions for data structures
-    * curry: Automatic currying decorators
-    * tup: Utils for handling tuples
-    * dict_utils: Fills the gaps in the dict api
-    * grammar: Decorators for pipeable functions
-    * prove: Simple assertions
-    * fn: Module for handling lambda functions
+    - Res: A type used for Exception handling as values
+    - Nil: An Exception used to indicate an unexpected None
+    - fn: A two step curried function used to add type information to lambda functions
+    - Piper: Monad class used to pipe values into functions repeatedly
+    - P: Special object used to pipe values into functions with `|`
 
 """
 import pythonix.res as res
