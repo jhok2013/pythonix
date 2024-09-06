@@ -149,3 +149,8 @@ Or you can use the `x` or `P` operators to pipe values infix like
 ```python
 10 <<x>> fn(int, int)(lambda x: x + 10) <<x>> float <<x>> str
 ```
+
+## Additional Features
+
+Some other included modules are fluent interfaced dictionaries and sequences, log trail handlers, an assertion module, and curried operations.
+Check out the documention for each module to learn more.
