@@ -1,4 +1,5 @@
 from pythonix.prelude import *
+from pythonix import prove
 from unittest import TestCase
 
 
@@ -8,28 +9,23 @@ class TestProve(TestCase):
         return super().setUp()
 
     def test_that(self) -> None:
-        (
-            self.start
-            > prove.that(lambda x: x == 10)
-        ).q
+        self.start >>= prove.that(lambda x: x == 10)
+        self.start <<= unwrap
 
     def test_equal(self) -> None:
-        self.start.apply(prove.equals(10)).unwrap()
+        self.start >>= prove.equals(10)
+        self.start <<= unwrap
 
     def test_is_true(self) -> None:
-        (self.start.bind(lambda x: x == 10).bind(prove.is_true).apply(lambda r: r.unwrap()))
+        self.start >>= lambda x: x + 10
+        self.start >>= prove.is_true
+        self.start <<= unwrap
 
     def test_is(self) -> None:
-        (
-            self.start
-            .bind(prove.is_an(int))
-            .apply(lambda r: r.unwrap())
-        )
+        self.start >>= prove.is_an(int)
+        self.start <<= unwrap
 
     def test_contains(self) -> None:
-        (
-            self.start
-            .bind(lambda x: [x] * 5)
-            .bind(prove.contains(10))
-            .apply(lambda r: r.unwrap())
-        )
+        self.start >>= lambda x: [x] * 5
+        self.start >>= prove.contains(10)
+        self.start <<= unwrap

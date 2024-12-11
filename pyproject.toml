@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "pythonix"
-version = "2.0.0"
+version = "3.0.0"
 description = "Rust and Gleam like functional programming in Python, complete with Results, pipes, and currying, log traililng, and so much more"
 authors = ["jhok2013 <jhok2013@gmail.com>"]
 readme = "README.md"
 license = "Apache-2.0"
 repository = "https://github.com/jhok2013/pythonix"
-keywords = ["functional", "pipes", "result", "error-as-values", "Rust", "Gleam", "log", "upgraded dictionary"]
+keywords = ["functional", "pipes", "result", "error-as-values", "Rust", "Gleam", "logging"]
 
 [tool.poetry.dependencies]
 python = "^3.10"

@@ -1,43 +1,14 @@
-"""Functions used to operate over data structures.
-
-Comparable to the filter, map, reduce, getitem, getattr, setitem, and setattr functions.
-Can be used easily with the Piper, and PipeApplyInfix, a.k.a P. All functions are as
-error proof as possible.
-
-Examples:
-
-    Mapping and Filtering: ::
-
-        >>> from operator import add
-        >>> data = [1, 2, 3, 4]
-        >>> is_even = lambda x: x % 2 == 0
-        >>> add_one = lambda x : x + 1
-        >>> mapped = map_over(add_one)(data)
-        >>> where_even = where(is_even)(mapped)
-        >>> total = fold(add)(where_even)
-        >>> total
-        6
-
-    Getting from Data Structures: ::
-
-        >>> data = [1, 2, 3]
-        >>> val, err = item(2)(data).u
-        >>> val
-        3
-    
-"""
+"""Useful functions for collections, classes, etc."""
 from typing import (
     Callable,
-    Iterable,
     cast,
-    Iterator,
     TypeVar,
     Mapping,
     Sequence,
     ParamSpec,
 )
-from functools import reduce
 from pythonix.internals.res import null_and_error_safe, Res, Nil
+from pythonix.internals.traits import Unwrap, UnwrapAlt
 from pythonix.internals.curry import two, three
 
 
@@ -45,84 +16,9 @@ P = ParamSpec("P")
 T = TypeVar("T")
 S = TypeVar("S")
 U = TypeVar("U")
+V = TypeVar("V")
 O = TypeVar("O", bound="object")
 K = TypeVar("K")
-
-
-@two
-def where(using: Callable[[T], bool], iterable: Iterable[T]) -> Iterator[T]:
-    """Filter over an `Iterable` with a function.
-
-    Function takes each of its elements and returns a True or False.
-    True evaluations are kept while False are not kept in the result.
-
-    Note:
-        Returns a lazy iterator that must be collected.
-
-    Args:
-        *using* ((T) -> bool): Function that takes a value *T* and returns True or False
-        iterable (Iterable[T]): List, tuple, or other iterable
-
-    Returns:
-        *iterator* (Iterator[T]): Lazy iterator of the same type as the iterable, but with
-        only the elements that evaluated to True
-
-    Example: ::
-
-        >>> data: list[str] = [1, 2, 3, 4]
-        >>> is_even = lambda x: x % 2 == 0
-        >>> list(where(is_even)(data))
-        [2, 4]
-
-    """
-    return filter(using, iterable)
-
-
-@two
-def map_over(using: Callable[[T], U], iterable: Iterable[T]) -> Iterable[U]:
-    """Run a function over an `Iterable`, return an Iterator of the results
-
-    Note:
-        Returns a lazy iterator that must be collected.
-
-    Args:
-        *using* ((T) -> U): Function that will be applied over each element of the Iterable
-        *iterable* (Iterable[T]): List, tuple, or other iterable.
-
-    Returns:
-        *iterator* (Iterator[U]): Lazy iterator containing the result of *using* over the *iterable*
-
-    Example: ::
-
-        >>> data = [1, 2, 3, 4]
-        >>> add_one = lambda x : x + 1
-        >>> list(map_over(add_one)(data))
-        [2, 3, 4, 5]
-
-    """
-    return map(using, iterable)
-
-
-@two
-def fold(using: Callable[[T, T], T], iterable: Iterable[T]) -> T:
-    """Accumulating pairs of elements to a final value recursively
-
-    Args:
-        *using* ((T, S) -> U): Function that takes two arguments and returns a single element of the same type
-        *iterable* (Iterable[T | S]): List, tuple, or other sequence of the same type
-
-    Returns:
-        *output* (U): Accumulated final value
-
-    Example: ::
-
-        >>> data = [1, 2, 3, 4]
-        >>> add = lambda x, y: x + y
-        >>> fold(add)(data)
-        10
-
-    """
-    return reduce(using, iterable)
 
 
 @three
@@ -218,6 +114,48 @@ def arg(val: T, op: Callable[[T], U]) -> U:
 
     return op(val)
 
+def do(using: Callable[[U], V]):
+    """Runs provided function but returns the input value.
 
-def call(op: Callable[[], U]) -> U:
-    return op()
+    Args:
+        using ((T) -> U): Func that takes following value and returns something
+
+    Returns:
+        ((T) -> T): Function that runs using and returns its input
+
+    #### Examples ::
+
+        >>> ok = Res.Some(10)
+        >>> ok >>= do(print)
+        >>> ok <<= unwrap
+        10
+    """
+
+    def inner(val: T) -> T:
+        using(cast(U, val))
+        return val
+
+    return inner
+
+def unwrap(subj: Unwrap[T]) -> T:
+    """Calls an objects `unwrap` method, with any side effects that were added
+
+    Args:
+        subj (Unwrap[T]): Any object that inherits and implements the `Unwrap` abstract class
+
+    Returns:
+        T: The wrapped value assigned to `Unwrap`
+    """
+    return subj.unwrap()
+
+
+def unwrap_alt(subj: UnwrapAlt[T]) -> T:
+    """Calls an objects `unwrap` method, with any side effects that were added
+
+    Args:
+        subj (UnwrapAlt[T]): Any object that inherits and implements the `Unwrap` abstract class
+
+    Returns:
+        T: The wrapped value assigned to `UnwrapAlt`
+    """
+    return subj.unwrap_alt()

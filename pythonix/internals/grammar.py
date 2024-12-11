@@ -1,69 +1,15 @@
-"""Tools simulating prefix, infix, and suffix applications.
-
-Includes decorator classes for creating new grammar functions, a ``P`` instance
-for performing arbitrary piping of values on the left to functions on the right,
-and the ``Piper`` class for chaining function binds, applies, and dos on
-values sequentially using >>, |, and >.
-
-Examples:
-
-    Piper: ::
-
-        >>> with_operators: str = Piper(5) >> (lambda x: x + 10) | print > str
-        15
-        >>> with_methods: str = Piper(5).bind(lambda x: x + 10).do(print).apply(str)
-        15
-
-    Pipe (P): ::
-
-        >>> sum([5, 5]) == 10
-        True
-        >>> [5, 5] |P| sum == 10
-        True
-
-    Prefix: ::
-
-        >>> @PipePrefix
-        ... def add_ten(x: int) -> int:
-        ...     return x + 10
-        ...
-        >>> add_ten(10)
-        20
-        >>> add_ten | 10
-        20
-
-    Infix: ::
-
-        >>> from functools import reduce
-        >>> @PipeInfix
-        ... def fold(func, iterable):
-        ...     return reduce(func, iterable)
-        ...
-        >>> add = lambda x, y: x + y
-        >>> add | fold | [1, 2, 3, 4]
-        10
-        >>> fold(add, [1, 2, 3, 4])
-        10
-
-    Suffix: ::
-
-        >>> @PipeSuffix
-        ... def add_ten(x: int) -> int:
-        ...     return x + 10
-        ...
-        >>> 10 | add_ten
-        20
-        >>> add_ten(10)
-        20
-
-"""
+"""Class and function decorators for operator syntax like `|`, `>>`, etc. Includes basic `Piper` that implements that behavior."""
 from __future__ import annotations
-from typing import TypeVar, Callable, Generic, cast
+from typing import TypeVar, Callable, Generic, ParamSpec
+from dataclasses import dataclass
 from pythonix.internals.curry import two
+from pythonix.internals.traits import Unwrap, Ad
 
+P = ParamSpec("P")
 S = TypeVar("S")
 T = TypeVar("T")
 U = TypeVar("U")
+V = TypeVar("V")
 
 
 class PipeSuffix(Generic[T, U], object):
@@ -219,7 +165,7 @@ class ShiftApplyPrefix(Generic[T], object):
 
 
 class ShiftApplySuffix(Generic[T], object):
-    """Allos the loading of a function using a left shift `>>`
+    """Allows the loading of a function using a left shift `>>`
 
     Args:
         inner (T): The wrapped value used in the function used by `apply` or `>>`
@@ -272,8 +218,7 @@ class ShiftApplyInfix(object):
 
     """
 
-    def __init__(self):
-        ...
+    def __init__(self): ...
 
     def __rlshift__(self, other: T) -> ShiftApplyPrefix[T]:
         return ShiftApplyPrefix(other)
@@ -356,14 +301,13 @@ class PipeApplyInfix(object):
 
     """
 
-    def __init__(self) -> None:
-        ...
+    def __init__(self) -> None: ...
 
     def __ror__(self, inner: U) -> PipeApplyPrefix[U]:
         return PipeApplyPrefix(inner)
 
 
-P: PipeApplyInfix = PipeApplyInfix()
+p: PipeApplyInfix = PipeApplyInfix()
 """Infix operator for pushing the left value into the right side function
 
 Note:
@@ -379,175 +323,109 @@ Examples: ::
 """
 
 
-@two
-def do(func: Callable[[S], U], val: T) -> T:
-    """Run the ``func`` with the ``val``, but only return the ``val``
+@dataclass(frozen=True, eq=True, init=True, order=True, match_args=True, repr=True)
+class Piper(Ad[T], Unwrap[T]):
+    """Wrapper enabling transformations of a value with `map` and `apply`. map uses `>>` `>>=` and apply `<<` and `<<=`
 
-    This function is useful for performing side effects like logging,
-    printing, or asserting without changing the value. It is very useful when
-    using the `P` operator or the `Piper` monad.
+    #### Examples ::
 
-    Args:
-        *func* ((S) -> U): Func to be called with value received in next call.
-
-    Returns:
-        *output* ((T) -> T): Function that calls *func*, and then returns its
-        passed in value
-
-    Examples:
-
-        Using the ``P`` operator ::
-
-            >>> actual: str = 10 |P| (lambda x: x + 10) |P| do(print) |P| str
-            20
-
-        Passing ``print`` to ``P`` would usually have the next value be ``None``.
-        However, since we used ``do``, its original value was preserved.
-
-    """
-    func(cast(S, val))
-    return val
-
-
-def inner(val: T) -> T:
-    """Returns its only argument. Useful for Piper >
-
-    Example:
-
-        >>> expected: int = 10
-        >>> actual: int = Piper(5) >> (lambda x: x + 5) > inner
-        >>> expected == actual
-        True
-
-    """
-    return val
-
-
-class Piper(Generic[T], object):
-    """Chain functions together with `>>`, `|`, and `>`
-
-    Makes chaining of sequential function calls easy with specialized operators
-    for different cases.
-
-    Use `bind` or `>>` to chain function calls, use `do` or `|` to run the func
-    but retain the current state, and `apply` or `>` to return the result of
-    the func being ran with the contained value.
-
-    Note:
-        Calling `do` (`|`) after `bind` (`>>`) can sometimes lose type
-        information. Use the `do`function with `bind` (`>>`) to overcome this.
-
-    Examples:
-
-        With Operators: ::
-
-            >>> actual: str = Piper(10) >> (lambda x: x + 10) >> do(print) > str
-            20
-
-        With Methods: ::
-
-            >>> actual: str = Piper(10).bind(lambda x: x + 10).do(print).apply(str)
-            20
-
-    FAQ:
-        Q: Whats the difference between ``bind`` `>>` and ``apply`` ``>``?
-        A: ``>>`` will return another instance of ``Piper`` to continue
-        chaining functions. ``>`` will return the result itself, halting method
-        chaining.
-
-        Q: What is ``do`` ``|`` and why should I use it?
-        A: ``do`` will run the function without changing the internal state.
-        This is useful for when you need to log, test, or print values and
-        you don't want to break the method chain.
+        >>> p = Piper(10)
+        >>> p >>= str
+        >>> p >>= str.split
+        >>> p >>= len
+        >>> p <<= lambda l: f"Length is {l}"
+        >>> p
+        'Length is 2'
 
     """
 
     inner: T
-    """The wrapped value that will be used as input for the received  functions"""
+    """The wrapped value"""
 
-    def __init__(self, inner: T):
+    def unwrap(self) -> T:
+        """Returns the wrapped value
+
+        Returns:
+            T: The wrapped value
+        """
+        return self.inner
+
+    def __irshift__(self, using: Callable[[T], U]) -> Piper[U]:
+        return self.map(using)
+
+    def __rshift__(self, using: Callable[[T], U]) -> Piper[U]:
+        return self.map(using)
+
+    def map(self, using: Callable[[T], U]) -> Piper[U]:
+        """Transforms wrapped value with func, returning new Piper instance. Uses `>>` and `>>=`.
+
+        Args:
+            using ((T) -> U): Function that takes inner value and returns a value
+
+        Returns:
+            Piper[U]: New Piper instance with output
+        """
+        return Piper(using(self.inner))
+
+
+class AndApplyPrefix(Generic[T], object):
+
+    inner: T
+
+    def __init__(self, inner: T) -> None:
         self.inner = inner
 
-    def __or__(self, op) -> Piper[T]:
-        return self.do(op)
+    def __and__(self, other: Callable[[T], U]) -> U:
+        return other(self.inner)
 
-    def __gt__(self, op: Callable[[T], U]) -> U:
-        return self.apply(op)
 
-    def __rshift__(self, op: Callable[[T], U]) -> Piper[U]:
-        return self.bind(op)
+class PipeFn(Generic[P, U]):
+    """Function decorator enabling adding arguments via the left `|` operator"""
 
-    def bind(self, op: Callable[[T], U]) -> Piper[U]:
-        """Run *op* with *inner* returning new *Piper* with result. Same as >>
+    op: Callable[P, U]
 
-        Args:
-            *op* ((T) -> U): Func that takes inner and returns new value
+    def __init__(self, op: Callable[P, U]) -> None:
+        self.op = op
 
-        Examples:
+    def __ror__(self, *args: P.args, **kwargs: P.kwargs) -> U:
+        return self.op(*args, **kwargs)
 
-            With >>: ::
+    def __ior__(self, *args: P.args, **kwargs: P.kwargs) -> U:
+        return self.op(*args, **kwargs)
+    
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> U:
+        return self.op(*args, **kwargs)
 
-                >>> expected: str = '10'
-                >>> actual: str = Piper(5) >> (lambda x: x + 5) > str
-                >>> actual == expected
-                True
 
-            With method: ::
+class FnPipe(Generic[P, U]):
+    """Function decorator enabling adding arguments via the right `|` operator"""
 
-                >>> expected: str = '10'
-                >>> actual: str = Piper(5).bind(lambda x: x + 5).bind(str).inner
-                >>> expected == actual
-                True
+    op: Callable[P, U]
 
-        """
-        return Piper(op(self.inner))
+    def __init__(self, op: Callable[P, U]) -> None:
+        self.op = op
 
-    def do(self, op: Callable[[T], U]) -> Piper[T]:
-        """Run *op* with *inner*, but return original `Piper`. Same as |
+    def __or__(self, *args: P.args, **kwargs: P.kwargs) -> U:
+        return self.op(*args, **kwargs)
 
-        Args:
-            *op* ((S) -> U): Func that takes inner and returns a new value
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> U:
+        return self.op(*args, **kwargs)
 
-        Examples:
 
-            With |: ::
+class InfixPipe(Generic[T, U, V]):
 
-                >>> expected: int = 10
-                >>> actual: int = Piper(10) | (lambda x: x + 10) > (lambda x: x)
-                >>> expected == actual
-                True
+    op: Callable[[T, U], V]
+    left: T
 
-            With do: ::
+    def __init__(self, op: Callable[[T, U], V]) -> None:
+        self.op = op
 
-                >>> expected: int = 10
-                >>> actual: int = Piper(10).do(lambda x: x + 10).inner
-                >>> expected == actual
-                True
-
-        """
-        op(self.inner)
+    def __ror__(self, left: T) -> InfixPipe[T, U, V]:
+        self.left = left
         return self
 
-    def apply(self, op: Callable[[T], U]) -> U:
-        """Run *op* with *inner*, returning the result. Same as >.
+    def __or__(self, right: U) -> V:
+        return self.op(self.left, right)
 
-        Args:
-            *op* ((T) -> U): Func that takes inner and returns a new value
-
-        Examples:
-
-            With >: ::
-
-                >>> expected: str = '10'
-                >>> actual: str = Piper(10) > str
-                >>> expected == actual
-                True
-
-            With apply: ::
-
-                >>> expected: str = '10'
-                >>> actual: str = Piper(10) > str
-                >>> expected == actual
-                True
-        """
-        return op(self.inner)
+    def __call__(self, left: T, right: U) -> V:
+        return self.op(left, right)

@@ -1,11 +1,13 @@
+"""Advanced versions of `list`, `tuple`, `dict`, and `deque` with builtin mapping, filtering, and folding"""
 from __future__ import annotations
+from collections.abc import Iterator, Set as AbstractSet
+from functools import reduce
 from typing import (
-    cast,
+    AbstractSet,
+    List,
     TypeVar,
-    Generic,
     Callable,
     Tuple,
-    overload,
     Iterable,
     SupportsIndex,
     Protocol,
@@ -13,57 +15,821 @@ from typing import (
 from typing_extensions import Self
 from collections import deque
 from dataclasses import dataclass
-from pythonix.internals.res import Res, Nil
+from pythonix.internals.res import Res, Nil, catch_all, null_and_error_safe
+from pythonix.internals.utils import unwrap
+from pythonix.internals.traits import Collad, MapAlt, Unwrap, Ad, UnwrapAlt
 
 
 _KT = TypeVar("_KT")
 _VT_co = TypeVar("_VT_co", covariant=True)
+T_co = TypeVar("T_co", covariant=True)
+T_con = TypeVar("T_con", contravariant=True)
+E = TypeVar("E", bound="Exception")
 T = TypeVar("T")
 U = TypeVar("U")
 V = TypeVar("V")
 W = TypeVar("W")
 K = TypeVar("K")
 L = TypeVar("L")
+_S = TypeVar("_S")
 NewK = TypeVar("NewK")
 NewV = TypeVar("NewV")
 
 
+class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
+    def keys(self) -> Iterable[_KT]: ...
+
+    def __getitem__(self, key: _KT, /) -> _VT_co: ...
+
+
+class SupportsSafeGetItem(Protocol[T_co]):  # type: ignore
+
+    def __getitem__(self, key: SupportsIndex) -> Res[T_co, Nil]: ...
+
+    def get(self, key: SupportsIndex) -> Res[T_co, Nil]: ...
+
+
 @dataclass(
-    frozen=True, eq=True, init=True, match_args=True, order=True, repr=True, slots=True
+    frozen=True, eq=True, init=True, match_args=True, order=True, repr=True
 )
-class Pair(Generic[T]):
-    """Wrapper for a key value pair
+class Pair(Tuple[K, T], Ad[T], Unwrap[T], MapAlt[T], UnwrapAlt[K]):
+    """Wrapper for tuple key value pair with additional features and type safety
 
     Args:
-        key (str): The name for the value
-        value (T): The value
+        key (K): Key for the value
+        inner (T): The value
+
+    #### Notable Features ::
+
+        >>> p = Pair("foo", 10)
+        >>> p >>= str                   # Change value to str
+        >>> p ^= lambda k: k + " bar"   # Add bar to key
+        >>> k, v = p                    # Unpack like a tuple
+        >>> p[0]                        # Access elements like a tuple
+        'foo bar'
+        >>> match p:                    # Pattern match easily
+        ...     case Pair(k, v):
+        ...         v
+        10
 
     """
 
-    key: str
-    value: T
+    key: K
+    """Key associated with this value"""
+    inner: T
+    """Wrapped value"""
 
-    def map(self, using: Callable[[T], U]) -> Pair[U]:
-        """Transforms the value using a function
+    def __irshift__(self, using: Callable[[T], U]) -> Pair[K, U]:
+        return self.map(using)
+
+    def __rshift__(self, using: Callable[[T], U]) -> Pair[K, U]:
+        return self.map(using)
+
+    def map(self, using: Callable[[T], U]) -> Pair[K, U]:
+        """Transform wrapped value with function
 
         Args:
-            using (Callable[[T], U]): Func that takes value and returns an output
+            using ((T) -> U): Func that takes inner value and returns an output
 
         Returns:
-            Pair[U]: The new Pair
+            Pair[K, U]: Transformed Pair
         """
-        return Pair(self.key, using(self.value))
+        return Pair(self.key, using(self.inner))
+
+    def __ixor__(self, using: Callable[[K], L]) -> Pair[L, T]:
+        return self.map_alt(using)
+
+    def __xor__(self, using: Callable[[K], L]) -> Pair[L, T]:
+        return self.map_alt(using)
+
+    def map_alt(self, using: Callable[[K], L]) -> Pair[L, T]:
+        """Transform key value with function
+
+        Args:
+            using ((K) -> L): Function to take `key` and return a new key
+
+        Returns:
+            Pair[L, T]: Updated Pair
+        """
+        return Pair(using(self.key), self.inner)
+
+    def unwrap_alt(self) -> K:
+        """Returns key value
+
+        Returns:
+            K: Key value
+        """
+        return self.key
+
+    def unwrap(self) -> T:
+        """Returns inner value
+
+        Returns:
+            T: inner value
+        """
+        return self.inner
 
 
-class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
-    def keys(self) -> Iterable[_KT]:
-        ...
+class Set(set[T], Collad[T]):
+    """Upgraded version of `set` with builtin `map`, `where`, `fold`, and `apply` operators.
 
-    def __getitem__(self, key: _KT, /) -> _VT_co:
-        ...
+    NOTE:
+        Using different operators in a chain can sometimes break type checking. For operations with multiple
+        operators use the methods or inplace operators.
+
+    ### Mappings
+        - `>>` `>>=` and `map()` run functions over contained values
+        - `//` `//=` and `where()` filter contained values
+        - `**` `**=` and `fold()` apply folding functions over contained values
+        - `<<` `<<=` and `apply()` run a function over the container itself
+
+    ### Examples
+
+    #### With Inplace operations ::
+
+        >>> s = Set([15, 20, 30, 40])
+        >>> s >>= lambda x: x * 2
+        >>> s //= lambda x: x % 3 == 0
+        >>> s **= lambda x, y: x + y
+        >>> s <<= unwrap
+        >>> s
+        90
+
+    #### With Operators ::
+
+        >>> s = Set([15, 20, 30, 40])
+        >>> s = s >> lambda x: x * 2
+        >>> s = s // lambda x: x % 3 == 0
+        >>> s = s ** lambda x, y: x + y
+        >>> s << unwrap
+        90
+
+    #### With Methods ::
+
+        >>> l = Set([15, 20, 30, 40])
+        >>> l.map(lambda x: x * 2).where(lambda x: x % 3 == 0).fold(lambda x, y: x + y).unwrap()
+        90
+
+    """
+
+    def __iter__(self) -> Iterator[T]:
+        return super().__iter__()
+
+    def __iand__(self, value: AbstractSet[object]) -> Self:
+        return super().__iand__(value)
+
+    def __and__(self, value: AbstractSet[object]) -> Set[T]:
+        return Set(super().__and__(value))
+
+    def __ior__(self, value: AbstractSet[T]) -> Self:
+        return super().__ior__(value)
+
+    def __or__(self, value: AbstractSet[_S]) -> Set[T | _S]:
+        return Set(super().__or__(value))
+
+    def __isub__(self, value: AbstractSet[object]) -> Self:
+        return super().__isub__(value)
+
+    def __sub__(self, value: AbstractSet[T | None]) -> Set[T]:
+        return Set(super().__sub__(value))
+
+    def __ixor__(self, value: AbstractSet[T]) -> Self:
+        return super().__ixor__(value)
+
+    def __xor__(self, value: AbstractSet[_S]) -> Set[T | _S]:
+        return Set(super().__xor__(value))
+
+    def __irshift__(self, using: Callable[[T], U]) -> Set[U]:
+        return self.map(using)
+
+    def __rshift__(self, using: Callable[[T], U]) -> Set[U]:
+        return self.map(using)
+
+    def map(self, using: Callable[[T], U]) -> Set[U]:
+        """Runs function over each element and keeps the results. Maps to `>>` and `>>=`
+
+        Args:
+            using ((T) -> U): Function that takes an element and returns an output
+
+        Returns:
+            Set[U]: Updated Set
+        """
+        return Set(using(t) for t in self)
+
+    def where(self, predicate: Callable[[T], bool]) -> Set[T]:
+        """Filters elements using `predicate`, keeping whichever return True. Maps to `//` and `//=`.
+
+        Args:
+            predicate ((T) -> bool): Filter function that returns True or False
+
+        Returns:
+            Set[T]: Updated Set
+        """
+        return Set((t for t in self if predicate(t)))
 
 
-class Deq(deque[T]):
+    def fold(self, using: Callable[[T, T], T]) -> T:
+        """Folds a function over the elements, returning its final result. Maps to `**` and `**=`
+
+        Args:
+            using ((T, T) -> T): Function that takes a pair of elements and returns a result
+
+        Returns:
+            T: The final result
+        """
+        return reduce(using, self)
+
+    def pop(self) -> Res[T, Nil]:
+        """Returns the left most element
+
+        Returns:
+            Res[T, Nil]: Element wrapped in Res
+        """
+        try:
+            return Res.Some(super().pop())
+        except KeyError:
+            return Res.Nil()
+
+    def add(self, element: T) -> Set[T]:
+        """Adds an element to the set
+
+        Args:
+            element (T): The element to be added
+
+        Returns:
+            Set[T]: The initial Set
+        """
+        super().add(element)
+        return self
+
+
+class Listad(List[T], Collad[T]):
+    """Upgraded version of `list` with builtin `map`, `where`, `fold`, and `apply` operators.
+
+    NOTE:
+        Using different operators in a chain can sometimes break type checking. For operations with multiple
+        operators use the methods or inplace operators.
+
+    ### Mappings
+        - `>>` `>>=` and `map()` run functions over contained values
+        - `//` `//=` and `where()` filter contained values
+        - `**` `**=` and `fold()` apply folding functions over contained values
+        - `<<` `<<=` and `apply()` run a function over the Listad itself
+
+    ### Examples
+
+    #### With Inplace operations ::
+
+        >>> l = Listad([15, 20, 30, 40])
+        >>> l >>= lambda x: x * 2
+        >>> l //= lambda x: x % 3 == 0
+        >>> l **= lambda x, y: x + y
+        >>> l
+        90
+
+    #### With Operators ::
+
+        >>> l = Listad([15, 20, 30, 40])
+        >>> l = l >> lambda x: x * 2
+        >>> l = l // lambda x: x % 3 == 0
+        >>> l = l ** lambda x, y: x + y
+        >>> l
+        90
+
+    #### With Methods ::
+
+        >>> l = Listad([15, 20, 30, 40])
+        >>> l.map(lambda x: x * 2).where(lambda x: x % 3 == 0).fold(lambda x, y: x + y)
+        90
+
+    """
+
+    def __iter__(self) -> Iterator[T]:
+        return super().__iter__()
+
+    def __iadd__(self, value: Iterable[T]) -> Self:
+        return super().__iadd__(value)
+
+    def __add__(self, value: Iterable[_S]) -> Listad[T | _S]:
+        return Listad(super().__add__(value))  # type: ignore
+
+    def __irshift__(self, using: Callable[[T], U]) -> Listad[U]:
+        return self.map(using)
+
+    def __rshift__(self, using: Callable[[T], U]) -> Listad[U]:
+        return self.map(using)
+
+    def copy(self) -> Listad[T]:
+        return Listad(super().copy())
+
+    def map(self, using: Callable[[T], U]) -> Listad[U]:
+        """Runs `using` over each element, returning a new Listad. Uses `>>` and `>>=`.
+
+        Args:
+            using ((T) -> U): Func to run over each element.
+
+        Returns:
+            Listad[U]: Updated Listad
+
+        #### Examples ::
+
+            >>> l = Listad([10, 20, 30])
+            >>> l >>= lambda x: x * 2
+            >>> first, *_ = l
+            >>> first
+            20
+        """
+        return Listad(using(elem) for elem in self)
+
+    def __ifloordiv__(self, predicate: Callable[[T], bool]) -> Listad[T]:
+        return self.where(predicate)
+
+    def __floordiv__(self, predicate: Callable[[T], bool]) -> Listad[T]:
+        return self.where(predicate)
+
+    def where(self, predicate: Callable[[T], bool]) -> Listad[T]:
+        """Filters elements using `predicate` that return True. Uses `//` and `//=`.
+
+        Args:
+            predicate ((T) -> bool): Func to test an element and return True or False
+
+        Returns:
+            Listad[T]: Updated Listad
+
+        #### Examples ::
+
+            >>> l = Listad([10, 20, 30])
+            >>> l //= lambda x: x % 3 == 0
+            >>> l[0]
+            30
+        """
+        return Listad(elem for elem in self if predicate(elem))
+
+    def fold(self, using: Callable[[T, T], T]) -> T:
+        """Runs `using` over each pair of elements, returning final result. Uses `**` and `**=`.
+
+        Args:
+            using (Callable[[T, T], T]): Func that uses pairs of elements to return a final value
+
+        Returns:
+            T: Final value
+
+        #### Examples ::
+
+            >>> l = Listad([10, 20, 30])
+            >>> l **= lambda x, y: x + y
+            >>> l
+            60
+        """
+        return reduce(using, self)
+
+    def __ilshift__(self: Self, using: Callable[[Self], U]) -> U:
+        return self.apply(using)
+
+    def __lshift__(self: Self, using: Callable[[Self], U]) -> U:
+        return self.apply(using)
+
+    def apply(self, using: Callable[[Self], U]) -> U:
+        """Runs function over whole value, returning result. Uses `<<` and `<<=`.
+
+        Args:
+            using ((Self) -> U): Func that takes Self, and returns a value
+
+        Returns:
+            U: Returned value from `using`
+
+        #### Examples ::
+
+            >>> l = Listad([10, 20, 30])
+            >>> l <<= sum
+            >>> l
+            60
+        """
+        return using(self)
+
+    def __getitem__(self, key: SupportsIndex) -> Res[T, Nil]:
+        try:
+            return Res.Some(super().__getitem__(key))
+        except (IndexError, KeyError) as e:
+            return Res[T, Nil].Nil(str(e))
+
+    def get(self, index: SupportsIndex) -> Res[T, Nil]:
+        """Retrieves a value as an `Res[T, Nil]` at a given index
+
+        Args:
+            index (SupportsIndex): Index of the desired value, or slice
+
+        Returns:
+            Res[T, Nil]: The retrieved value as an Opt[T]. Must be handled.
+        """
+        return self[index]
+    
+    @null_and_error_safe(IndexError) 
+    def pop(self, index: SupportsIndex = -1) -> T:
+        """Retrieves and removes an element from the Litad
+
+        Args:
+            index (SupportsIndex, optional): Index of the item to be popped out. Defaults to -1.
+
+        Returns:
+            Res[T, Nil]: Res containing the popped value 
+        """
+        return super().pop(index)
+
+
+def flatten(iterable: Iterable[Iterable[T]]) -> Iterable[T]:
+    """Flattens nested iterable
+
+    Args:
+        iterable (Iterable[Iterable[T]]): Nested iterable
+
+    Returns:
+        Iterable[T]: Unnested iterable
+    """
+    return (elem for niter in iterable for elem in niter)
+
+def separate(iter_res: Iterable[Res[T, E]]) -> tuple[Listad[T], Listad[E]]:
+    """Convenience func to separate Ok and Err into separate Listads
+
+    Args:
+        iter_res (Iterable[Res[T, E]]): Iterable full of Res[T, E]
+
+    Returns:
+        tuple[Listad[T], Listad[E]]: pair of Listads with Ok or Err values respectively
+
+    #### Examples ::
+
+        >>> results = Listad([Res.Some(10), Res.Some(10), Res.Nil()])
+        >>> oks, errs = results << separate
+        >>> oks >>= str
+        >>> oks << print
+        ['10', '10']
+    """
+    oks = Listad(res.q for res in iter_res if res)
+    errs = Listad(res.e for res in iter_res if not res)
+    return oks, errs
+
+
+class Tuplad(Tuple[T], Collad[T]):
+    """Upgraded version of `tuple` with builtin `map`, `where`, `fold`, and `apply` operators.
+
+    NOTE:
+        Using different operators in a chain can sometimes break type checking. For operations with multiple
+        operators use the methods or inplace operators.
+
+    ### Mappings
+        - `>>` `>>=` and `map()` run functions over contained values
+        - `//` `//=` and `where()` filter contained values
+        - `**` `**=` and `fold()` apply folding functions over contained values
+        - `<<` `<<=` and `apply()` run a function over the Listad itself
+
+    ### Examples
+
+    #### With Inplace operations ::
+
+        >>> t = Tuplad([15, 20, 30, 40])
+        >>> t >>= lambda x: x * 2
+        >>> t //= lambda x: x % 3 == 0
+        >>> t **= lambda x, y: x + y
+        >>> t <<= unwrap
+        >>> t
+        90
+
+    #### With Operators ::
+
+        >>> t = Tuplad([15, 20, 30, 40])
+        >>> t = t >> lambda x: x * 2
+        >>> t = t // lambda x: x % 3 == 0
+        >>> t = t ** lambda x, y: x + y
+        >>> t << unwrap
+        >>> t
+        90
+
+    #### With Methods ::
+
+        >>> t = Tuplad([15, 20, 30, 40])
+        >>> t.map(lambda x: x * 2).where(lambda x: x % 3 == 0).fold(lambda x, y: x + y).unwrap()
+        90
+
+    """
+
+    def __iter__(self) -> Iterator[T]:
+        return super().__iter__()
+
+    def __irshift__(self, using: Callable[[T], U]) -> Tuplad[U]:
+        return self.map(using)
+
+    def __rshift__(self, using: Callable[[T], U]) -> Tuplad[U]:
+        return self.map(using)
+
+    def map(self, using: Callable[[T], U]) -> Tuplad[U]:
+        """Runs `using` over each element, returning a new Tuplad. Uses `>>` and `>>=`.
+
+        Args:
+            using ((T) -> U): Func to run over each element.
+
+        Returns:
+            Tuplad[U]: Updated Listad
+
+        #### Examples ::
+
+            >>> l = Tuplad([10, 20, 30])
+            >>> l >>= lambda x: x * 2
+            >>> first, *_ = l
+            >>> first
+            20
+        """
+        return Tuplad(using(elem) for elem in self)
+
+    def __ifloordiv__(self, predicate: Callable[[T], bool]) -> Tuplad[T]:
+        return self.where(predicate)
+
+    def __floordiv__(self, predicate: Callable[[T], bool]) -> Tuplad[T]:
+        return self.where(predicate)
+
+    def where(self, predicate: Callable[[T], bool]) -> Tuplad[T]:
+        """Filters elements using `predicate` that return True. Uses `//` and `//=`.
+
+        Args:
+            predicate ((T) -> bool): Func to test an element and return True or False
+
+        Returns:
+            Tuplad[T]: Updated Listad
+
+        #### Examples ::
+
+            >>> l = Listad([10, 20, 30])
+            >>> l //= lambda x: x % 3 == 0
+            >>> l[0]
+            30
+        """
+        return Tuplad(elem for elem in self if predicate(elem))
+
+    def fold(self, using: Callable[[T, T], T]) -> T:
+        """Runs `using` over each pair of elements, returning final result. Uses `**` and `**=`.
+
+        Args:
+            using ((T, T) -> T): Func that uses pairs of elements to return a final value
+
+        Returns:
+            T: Final value
+
+        #### Examples ::
+
+            >>> l = Tuplad([10, 20, 30])
+            >>> l **= lambda x, y: x + y
+            >>> l
+            60
+        """
+        return reduce(using, self)
+
+    def __ilshift__(self: Self, using: Callable[[Self], U]) -> U:
+        return self.apply(using)
+
+    def __lshift__(self: Self, using: Callable[[Self], U]) -> U:
+        return self.apply(using)
+
+    def apply(self, using: Callable[[Self], U]) -> U:
+        """Runs function over whole value, returning result. Uses `<<` and `<<=`.
+
+        Args:
+            using ((Self) -> U): Func that takes Self, and returns a value
+
+        Returns:
+            U: Returned value from `using`
+
+        #### Examples ::
+
+            >>> l = Tuplad([10, 20, 30])
+            >>> l <<= sum
+            >>> l
+            60
+        """
+        return using(self)
+
+    def __getitem__(self, key: SupportsIndex) -> Res[T, Nil]:
+        try:
+            return Res.Some(super().__getitem__(key))
+        except (IndexError, KeyError) as e:
+            return Res[T, Nil].Nil(str(e))
+
+    def get(self, index: SupportsIndex) -> Res[T, Nil]:
+        """Retrieves a value as an `Res[T, Nil]` at a given index
+
+        Args:
+            index (SupportsIndex): Index of the desired value, or slice
+
+        Returns:
+            Res[T, Nil]: The retrieved value as an Opt[T]. Must be handled.
+        """
+        return self[index]
+
+    def __iadd__(self, value: tuple[_S] | Tuplad[_S]) -> Tuplad[T | _S]:
+        return Tuplad(super().__add__(value))
+
+    def __add__(self, value: tuple[_S] | Tuplad[_S]) -> Tuplad[T | _S]:
+        return Tuplad(super().__add__(value))
+    
+
+
+class Dictad(dict[K, T], Collad[T], MapAlt[K]):
+    """Upgraded version of `dict` with builtin `map`, `where`, `fold`, and `apply` operators.
+
+    NOTE:
+        Using different operators in a chain can sometimes break type checking. For operations with multiple
+        operators use the methods or inplace operators.
+
+    ### Mappings
+        - `>>` `>>=` and `map()` run functions over contained values
+        - `//` `//=` and `where()` filter contained values
+        - `**` `**=` and `fold()` apply folding functions over contained values
+        - `<<` `<<=` and `apply()` run a function over the container itself
+
+    ### Examples
+
+    #### With Inplace operations ::
+
+        >>> d = Dictad({"foo": 10})
+        >>> d >>= lambda x: x + 10
+        >>> d ^= lambda k: k + "lish"
+        >>> d |= {"bar": 20}
+        >>> d |= {"baz": 30}
+        >>> d //= lambda k, v: v != 30
+        >>> d **= lambda l, r: l + r
+        >>> d <<= unwrap
+        40
+
+    #### With Operators ::
+
+        >>> d = Dictad({"foo": 10})
+        >>> d = d >> lambda x: x + 10
+        >>> d = d ^ lambda k: k + "lish"
+        >>> d = d | {"bar": 20}
+        >>> d = d | {"baz": 30}
+        >>> d = d // lambda k, v: v != 30
+        >>> d = d ** lambda l, r: l + r
+        >>> d << unwrap
+        40
+
+    #### With Methods ::
+
+        >>> d = Dictad({"foo": 10})
+        >>> d = d.map(lambda x: x + 10).map_alt(lambda k: x + "lish")
+        >>> d["bar"] = 20
+        >>> d["baz"] = 30
+        >>> d.where(lambda k, v: v != 30).fold(lambda l, r: l + r).unwrap()
+        40
+
+    """
+
+    def __irshift__(self, using: Callable[[T], U]) -> Dictad[K, U]:
+        return self.map(using)
+
+    def __rshift__(self, using: Callable[[T], U]) -> Dictad[K, U]:
+        return self.map(using)
+
+    def map(self, using: Callable[[T], U]) -> Dictad[K, U]:
+        """Run a function over contained values, returning an updated version. Maps to `>>` and `>>=`.
+
+        Args:
+            using ((T) -> U): Function that takes a value and returns another
+
+        Returns:
+            Dictad[K, U]: Updated Dictad
+        """
+        return Dictad({k: using(t) for k, t in self.items()})  # type: ignore
+
+    def __ipow__(self, using: Callable[[T, T], T]) -> Res[T, Exception]:
+        return self.fold(using)
+
+    def __pow__(self, using: Callable[[T, T], T]) -> Res[T, Exception]:
+        return self.fold(using)
+
+    @catch_all
+    def fold(self, using: Callable[[T, T], T]) -> T:
+        """Folds a function over pairs of elements, returning the final result. Maps to `**` and `**=`.
+
+        Args:
+            using ((T, T) -> T): Function that takes two arguments and returns one.
+
+        Returns:
+            Res[T, Exception]: Final result of the fold
+        """
+        return reduce(using, self.values())
+
+    def apply(self, using: Callable[[Self], U]) -> U:
+        """Runs function over whole value, returning result. Uses `<<` and `<<=`.
+
+        Args:
+            using ((Self) -> U): Func that takes Self, and returns a value
+
+        Returns:
+            U: Returned value from `using`
+
+        #### Examples ::
+
+            >>> l = Tuplad([10, 20, 30])
+            >>> l <<= sum
+            >>> l
+            60
+        """
+        return using(self)
+
+    def __xor__(self, using: Callable[[K], L]) -> Dictad[L, T]:
+        return self.map_alt(using)
+
+    def __ixor__(self, using: Callable[[K], L]) -> Dictad[L, T]:
+        return self.map_alt(using)
+
+    def map_alt(self, using: Callable[[K], L]) -> Dictad[L, T]:
+        """Run a function over contained keys, returning an updated version. Maps to `^ and `^=`
+
+        Args:
+            using ((K) -> L): Function that takes a key and returns another
+
+        Returns:
+            Dictad[L, T]: Updated Dictad
+        """
+        return Dictad({using(k): v for k, v in self.items()})  # type: ignore
+
+    def __ifloordiv__(self, predicate: Callable[[K, T], bool]) -> Dictad[K, T]:
+        return self.where(predicate)
+
+    def __floordiv__(self, predicate: Callable[[K, T], bool]) -> Dictad[K, T]:
+        return self.where(predicate)
+
+    def where(self, predicate: Callable[[K, T], bool]) -> Dictad[K, T]:
+        """Filters over keys and values, retaining True values. Maps to `//` and `//=`
+
+        Args:
+            predicate ((K, T) -> bool): Function that takes a key and value, and returns True
+
+        Returns:
+            Dictad[K, T]: Updated Dictad
+        """
+        return Dictad({k: v for k, v in self.items() if predicate(k, v)})  # type: ignore
+
+    def __getitem__(self, key: K) -> Res[T, Nil]:
+        try:
+            return Res.Some(super().__getitem__(key))
+        except (IndexError, KeyError) as e:
+            return Res[T, Nil].Nil(str(e))
+
+    def get(self, key: K) -> Res[T, Nil]:
+        """Retrieves a value as an `Res[T, Nil]` at a given index
+
+        Args:
+            key (K): Immutable key
+
+        Returns:
+            Res[T, Nil]: The retrieved value as an Res[T, Nil]. Must be handled.
+        """
+        return self[key]
+
+    def pop(self, key: K) -> Res[T, Nil]:
+        """Returns a value and removes it from the `dict`
+
+        Args:
+            key (K): The key for the item desired
+
+        Returns:
+            Opt[V]: The desired item wrapped in an `Opt`
+        """
+        try:
+            return Res.Some(super().pop(key))
+        except (KeyError, IndexError) as e:
+            return Res[T, Nil].Nil(str(e))
+
+    def popitem(self) -> Res[Tuple[K, T], Nil]:
+        """Removes and returns the farthest right key value tuple
+
+        Returns:
+            Opt[Tuple[K | V]]: The farthest right key value tuple or Nil
+        """
+        try:
+            return Res.Some(super().popitem())
+        except (KeyError, IndexError) as e:
+            return Res[Tuple[K, T], Nil].Nil(str(e))
+
+    def __ior__(self, other: dict[L, U]) -> Dictad[K | L, T | U]:
+        return Dictad(dict.__or__(self, other))
+
+    def __or__(self, other: dict[L, U]) -> Dictad[K | L, T | U]:
+        return Dictad(dict.__or__(self, other))
+    
+    def copy(self) -> Dictad[K, T]:
+        """Shallow copies the Dictad and returns it"""
+        return Dictad(super().copy())
+    
+    @staticmethod
+    def fromkeys(keys: Iterable[K], value: T) -> Dictad[K, T]:
+        return Dictad(dict.fromkeys(keys, value))
+    
+    def __iter__(self) -> Iterator[K]:
+        return super().__iter__()
+
+
+class Deq(deque[T], Collad[T]):
     """Upgraded version of `deque` with safe retrieval, fluent interface, and better type support"""
 
     def __init__(self, iterable: Iterable[T], maxlen: int | None = None):
@@ -220,6 +986,12 @@ class Deq(deque[T]):
         super().rotate(n)
         return self
 
+    def __irshift__(self, using: Callable[[T], U]) -> Deq[U]:
+        return self.map(using)
+
+    def __rshift__(self, using: Callable[[T], U]):
+        return self.map(using)
+
     def map(self, using: Callable[[T], U]) -> Deq[U]:
         """Runs a function over each element in the Deq, returning a new one
 
@@ -241,6 +1013,10 @@ class Deq(deque[T]):
             Deq[T]: The filtered Deq
         """
         return Deq([elem for elem in self if using(elem) == True])
+
+    @catch_all
+    def fold(self, using: Callable[[T, T], T]) -> T:
+        return reduce(using, self)
 
     def index(
         self, x: T, start: int = 0, stop: int = 9223372036854775807
@@ -268,351 +1044,3 @@ class Deq(deque[T]):
             Opt[int]: Maximum capactity, else Nil
         """
         return Res.Some(super().maxlen)
-
-
-class DictPlus(dict[K, V]):
-    """Upgraded `dict` with safe getters, better type handling, and fluent methods
-
-    Has an identical constructor to `dict`. All `dict` methods are supported.
-
-    ### Examples
-
-    `dict` methods return references to the new dict, which allows better chaining ::
-
-        >>> d = (
-        ...     DictPlus({"hello": "world"})
-        ...     .put("hola", "mundo")
-        ...     .update({"top": "ten"})
-        ...     .map(str.lower)
-        ...     .map_keys(str.upper)
-        ...     .where(lambda k, v: k != "TOP")
-        >>> )
-
-    Safe getters return `Opt[V]` so no unexpected crashes or None values
-
-        >>> hello_opt: Opt[str | int] = x.pop("HELLO")
-        >>> hello_opt.unwrap()
-        'world'
-
-    """
-
-    def __getitem__(self, key: K) -> Res[V, Nil]:
-        try:
-            return Res.Some(super().__getitem__(key))
-        except (KeyError, IndexError) as e:
-            return Res[V, Nil].Nil(str(e))
-
-    def get(self, key: K) -> Res[V, Nil]:
-        """Retrieves a value if key exists, else Nil
-
-        Args:
-            key (K): Hashable key whose value will be returned
-
-        Returns:
-            Opt[V]: The returned value
-        """
-        return self[key]
-
-    def pop(self, key: K) -> Res[V, Nil]:
-        """Returns a value and removes it from the `dict`
-
-        Args:
-            key (K): The key for the item desired
-
-        Returns:
-            Opt[V]: The desired item wrapped in an `Opt`
-        """
-        try:
-            return Res.Some(super().pop(key))
-        except (KeyError, IndexError) as e:
-            return Res[V, Nil].Nil(str(e))
-
-    def popitem(self) -> Res[Tuple[K, V], Nil]:
-        """Removes and returns the farthest right key value tuple
-
-        Returns:
-            Opt[Tuple[K | V]]: The farthest right key value tuple or Nil
-        """
-        try:
-            return Res.Some(super().popitem())
-        except (KeyError, IndexError) as e:
-            return Res[Tuple[K, V], Nil].Nil(str(e))
-
-    @overload
-    def update(
-        self, m: SupportsKeysAndGetItem[NewK, NewV]
-    ) -> DictPlus[K | NewK, V | NewV]:
-        ...
-
-    @overload
-    def update(self, m: dict[NewK, NewV]) -> DictPlus[K | NewK, V | NewV]:
-        ...
-
-    @overload
-    def update(self, m: Iterable[tuple[NewK, NewV]]) -> DictPlus[K | NewK, V | NewV]:
-        ...
-
-    def update(
-        self,
-        m: dict[NewK, NewV]
-        | SupportsKeysAndGetItem[NewK, NewV]
-        | Iterable[tuple[NewK, NewV]],
-    ) -> DictPlus[K | NewK, V | NewV]:
-        """Updates using keys value pairs from another `dict`
-
-        Args:
-            m (dict[NewK, NewV] | SupportsKeysAndGetItem[NewK, NewV] | Iterable[tuple[NewK, NewV]]): A dict or object that supports getitem and setitem
-
-        Returns:
-            DictPlus[K | NewK, V | NewV]: The updated dictionary
-        """
-        super().update(m)  # type: ignore
-        return self  # type: ignore
-
-    def put(self, key: NewK, value: NewV) -> DictPlus[K | NewK, V | NewV]:
-        """Adds a key value pair
-
-        Args:
-            key (NewK): The key for the pairing
-            value (NewV): The value for the pairing
-
-        Returns:
-            DictPlus[K | NewK, V | NewV]: The updated dictionary
-        """
-        return self.update({key: value})
-
-    def map(
-        self: DictPlus[K, V | NewV], using: Callable[[V], NewV]
-    ) -> DictPlus[K, V | NewV]:
-        """Runs a function over each value in the dictionary
-
-        Args:
-            using (Callable[[V], NewV]): A function that takes an input and returns an output
-
-        Returns:
-            DictPlus[K, V | NewV]: The updated dictionary
-        """
-        for k, v in self.items():
-            self[k] = using(cast(V, v))
-        return self
-
-    def map_keys(self, using: Callable[[K], NewK]) -> DictPlus[K | NewK, V]:
-        """Runs a functino over each key in the dictionary
-
-        Args:
-            using (Callable[[K], NewK]): A func that takes a key input and returns an output
-
-        Returns:
-            DictPlus[K | NewK, V]: _description_
-        """
-        cls = type(self)
-        return cls.__new__(cls).update({using(k): v for k, v in self.items()})
-
-    def where(self, using: Callable[[K, V], bool]) -> Self:
-        """Filters the dictionary using a function that returns a `bool`
-
-        Args:
-            using (Callable[[K, V], bool]): A function that takes a key and value and returns True or False
-
-        Returns:
-            Self[K, V]: The dictionary where the function was `True`
-        """
-        for k, v in self.items():
-            if not using(k, v):
-                self.pop(k)
-        return self
-
-    def clear(self) -> Self:
-        """Clears all entries from the dictionary
-
-        Returns:
-            Self[K, V]: An empty version of the dictionary
-        """
-        super().clear()
-        return self
-
-    def __copy__(self) -> Self:
-        return DictPlus(super().copy())  # type: ignore
-
-    def copy(self) -> Self:
-        """Deep copies the dictionary
-
-        Returns:
-            Self[K, V]: An exact copy of the dictionary
-        """
-        return self.__copy__()
-
-    @classmethod
-    def fromkeys(
-        cls: type[DictPlus[NewK, NewV]], iterable: Iterable[NewK], value: NewV
-    ) -> DictPlus[NewK, NewV]:
-        """Returns a new `DictPlus` with the given keys and default value
-
-        Args:
-            iterable (Iterable[NewK]): An iterable filled with the desired keys
-            value (NewV): The default value
-
-        Returns:
-            DictPlus[NewK, NewV]: A dictionary filled with the keys and default values
-        """
-        d = super().fromkeys(iterable, value)
-        return cls.__new__(cls).update(d)
-
-
-class StrictDict(DictPlus[K, V]):
-    """A subclass of `DictPlus` that enforces static typing on its keys and values.
-    Union types are unsupported. Must use the `new` method for initialization.
-
-    ### Example
-
-    Createa typed dict using `new` ::
-
-        >>> d = StrictDict.new(ktype=str, vtype=str).put("hello", "world)
-
-    Constructing without `new` doesn't enforce types
-
-    Setting items that are not the objects declared types raises an Exception
-
-        >>> d.put("ten", 10)
-        ValueError
-
-    """
-
-    _ktype: type[K]
-    """The key type. Should not be changed except in the `new` method"""
-    _vtype: type[V]
-    """The value type. Should not be changed except in the `new` method"""
-
-    @property
-    def kt(self) -> type[K]:
-        """The declared type of the key
-
-        Returns:
-            type[K]: The key type
-        """
-        return self._ktype
-
-    @property
-    def vt(self) -> type[V]:
-        """The declared type of the values
-
-        Returns:
-            type[K]: The value type
-        """
-        return self._vtype
-
-    @classmethod
-    def new(cls, ktype: type[NewK], vtype: type[NewV]) -> StrictDict[NewK, NewV]:
-        """Creates a new `StrictDict` with the enforced types
-
-        Args:
-            ktype (type[NewK]): The type to enforce for keys
-            vtype (type[NewV]): The type to enforce for values
-
-        Returns:
-            StrictDict[NewK, NewV]: A new `StrictDict`
-        """
-        obj = cls.__new__(cls)
-        object.__setattr__(obj, "_ktype", ktype)
-        object.__setattr__(obj, "_vtype", vtype)
-        return cast(StrictDict[NewK, NewV], obj)
-
-    def __setitem__(self, key: K, value: V) -> None:
-        if not isinstance(key, self.kt):
-            raise ValueError(
-                f"Expected key to be {type(self.kt)} but found {type(key)}"
-            )
-
-        if not isinstance(value, self.vt):
-            raise ValueError(
-                f"Expected key to be {type(self.vt)} but found {type(value)}"
-            )
-
-        return super().__setitem__(key, value)
-
-    @overload
-    def update(self, m: dict[K, V]) -> Self:
-        ...
-
-    @overload
-    def update(self, m: Iterable[tuple[K, V]]) -> Self:
-        ...
-
-    def update(
-        self,
-        m: dict[K, V] | SupportsKeysAndGetItem[K, V] | Iterable[tuple[K, V]],
-    ) -> Self:
-        """Updates the dictionary with a new one. Raises `ValueError` on bad types
-
-        Args:
-            m (dict[K, V] | SupportsKeysAndGetItem[K, V] | Iterable[tuple[K, V]]): A new dictionary to merge in
-
-        Returns:
-            Self[K, V]: The updated dictionary
-        """
-        super().update(m)
-        return self
-
-    def put(self, key: K, value: V) -> Self:
-        """Adds a new key value pair. Raises `ValueError` on bad types
-
-        Args:
-            key (K): A new key
-            value (V): A new value
-
-        Returns:
-            Self[K, V]: An updated dictionary
-
-        """
-        return self.update({key: value})
-
-    def map(self, using: Callable[[V], NewV]) -> StrictDict[K, NewV]:
-        """Uses a function to return a new `StrictDict` with updated values
-
-        Args:
-            using (Callable[[V], NewV]): A func that takes a value and returns an output
-
-        Returns:
-            StrictDict[K, NewV]: A new dictionary
-        """
-        first, *rest = self.items()
-        key, value = first
-        new_vtype = type(using(value))
-        obj = self.new(self.kt, new_vtype)
-        for key, value in [(key, value)] + rest:
-            obj[key] = using(value)
-        return obj
-
-    def map_keys(self, using: Callable[[K], NewK]) -> StrictDict[NewK, V]:
-        """Uses a function to return a new `StrictDict` with updated keys
-
-        Args:
-            using (Callable[[K], NewK]): A funct that takes a key and returns a new key
-
-        Returns:
-            StrictDict[NewK, V]: A new dictionary
-        """
-        first, *rest = self.items()
-        key, value = first
-        new_ktype = type(using(key))
-        obj = self.new(new_ktype, self.vt)
-        for key, value in [(key, value)] + rest:
-            obj[using(key)] = value
-        return obj
-
-    @classmethod
-    def fromkeys(cls, iterable: Iterable[NewK], value: NewV) -> StrictDict[NewK, NewV]:
-        """Creates a new dictionary using an iterable of keys and a default value
-
-        Args:
-            iterable (Iterable[NewK]): An iterable of desired keys
-            value (NewV): A default value
-
-        Returns:
-            StrictDict[NewK, NewV]: A new dictionary
-        """
-        first, *rest = iterable
-        ktype = type(first)
-        vtype = type(value)
-        obj = cls.__new__(cls).new(ktype, vtype)
-        return obj.update(dict.fromkeys(iterable, value))
