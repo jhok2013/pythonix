@@ -22,9 +22,11 @@ You can even use it in place to modify functions.
     'hello, world'
 
 """
-from typing import TypeVar, Callable
+from __future__ import annotations
+from typing import TypeVar, Callable, ParamSpec
 from functools import wraps, WRAPPER_ASSIGNMENTS
 
+P = ParamSpec('P')
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
 T3 = TypeVar("T3")
@@ -404,3 +406,42 @@ def nine(
         return in2
 
     return in1
+
+
+def decouple(method: Callable[P, U]):
+    """Decouples a method from a class as a function
+
+    Args:
+        method (Callable[P, U]): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
+    @wraps(method)
+    def inner(*args: P.args, **kwargs: P.kwargs) -> U:
+
+        return method(*args, **kwargs)
+
+    return inner
+
+
+def rotate(using: Callable[[T1, T2], U]) -> Callable[[T2, T1], U]:
+
+    def wrapper(arg2: T2, arg1: T1) -> U:
+
+        return using(arg1, arg2)
+    
+    return wrapper
+
+def pop(using: Callable[[T1, T2], U]) -> Callable[[T1], Callable[[T2], U]]:
+
+    def wrapper(first: T1) -> Callable[[T2], U]:
+
+        def inner(last: T2) -> U:
+
+            return using(first, last)
+        
+        return inner
+    
+    return wrapper

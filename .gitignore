@@ -1,0 +1,8 @@
+pythonix/__pycache__/__init__.cpython-310.pyc
+pythonix/__pycache__/*
+*/__pycache__/*
+*/internals/__pycache__/*
+*/dist/*
+dist/*
+.vscode
+pythonix/internals/trail/__pycache__

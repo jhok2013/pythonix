@@ -21,4 +21,4 @@ Examples: ::
     >>> 10 |P| fn(int, int)(lambda x: x + 1)
     11
 """
-from pythonix.internals.fn import fn
+from pythonix.internals.fn import fn, Fn, FnOnce, Predicate

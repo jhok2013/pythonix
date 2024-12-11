@@ -16,7 +16,7 @@ Examples: ::
     20
     
 """
-from typing import TypeVar, Callable, overload
+from typing import TypeVar, Callable, overload, TypeAlias
 from functools import wraps
 
 T1 = TypeVar("T1")
@@ -30,10 +30,17 @@ T8 = TypeVar("T8")
 T9 = TypeVar("T9")
 U = TypeVar("U")
 
+Fn: TypeAlias = Callable[[T1], U]
+"""Type alias for a function that takes an input and returns an output"""
+
+FnOnce: TypeAlias = Callable[[], U]
+"""Type alias for a function that takes no input but returns an output"""
+
+Predicate: TypeAlias = Callable[[T1], bool]
+"""Type alias for a function that takes a value and returns True or False"""
 
 @overload
-def fn(out: type[U]) -> Callable[[Callable[[], U]], Callable[[], U]]:
-    ...
+def fn(out: type[U]) -> Fn[FnOnce[U], FnOnce[U]]: ...
 
 
 @overload
@@ -138,7 +145,8 @@ def fn(
     ...
 
 
-def fn(*type_args):
+
+def fn(*type_args):  # type: ignore
     """Function to create lambdas with type hints. Supports up to 9 arguments.
 
     The first call allows specification of the types, with the last or the

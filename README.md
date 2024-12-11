@@ -1,362 +1,292 @@
-# PYTHONIX
+# PYTHONIX V3
 
-A collection of functional modules in Python 10 inspired by Gleam and Rust.
-If you like functional oriented programming, but have to program in Python, then check this out.
+Pythonix V3 brings powerful error handling inspired by Rust and Go, type hinted lambda functions, and slick operator syntax like Haskell to Python. It makes writing Python code more sleek, easy to read, safe, and reliable with full type transparency. Lastly, using Pythonix looks nice, which **matters**. It even extends to the most common data structures like `list`, `dict`, and `tuple`.
 
-The goal is to take some great features of Rust like strong types, errors by value with Results
-and Options, error unpacking like in Go, and some other great features from Gleam like piping with `|>` and classes as
-modules, and combine them for use in Python without any external dependencies.
+The most important part of programming is knowing what can break and why, and being able to handle those issues the right way. Usingn Pythonix's `Res` type
+allows you to do that easily, in the way that looks best to you.
 
-Here are examples of my favorite features:
+TL;DR: You can use operators like `>>=`, `^=`, `**=`, `//=`, `<<=`, their normal operators, or their methods `map`, `map_alt` / `map_err`, `fold`, `where`, `apply` respectivel on classes that use the right traits. You handle errors with `Res`, None values with `Res.Some()`, and quickly do stuff to data without having to write comprehensions, for loops, or use the ugly builtin functions. Plus you can make type hinted lamdbda functions with `fn()`, which honestly should have been a thing already. If you don't like the operator grammar then you can use the methods on each class instead.
 
-## Pipes and Pipe Likes
-
-`P` and `Piper` are special wrapper classes the take what's on the left, and put it into the function on the right.
-
-You can take statements like this:
-
-```python
-data = list(range(0, 300))
-total = reduce(lambda x, y: x + y, map(lambda x: x + 10, filter(lambda x: x % 2 == 0), data))
-print(total)
-```
-
-And turn them into more readable statements like this:
-
-```python
-(
-    Piper(range(0,10))
-    >> list
-    >> op.where(fn(int, bool)(lambda x: x % 2 == 0))
-    >> op.map_over(fn(int, int)(lambda x: x + 10))
-    |  print
-    > op.fold(fn(int, int, int)(lambda x, y: x + y))
-)    
-```
-
-Most of the functions in pythonix are curried and have the subject as the last argument.
-Curried means the arguments are passed in as function calls, and having the subject last
-makes piping possible without changing Python's syntax. To make functions that work with
-piping, take your functions that are like this:
-
-```python
-def get(data: list[int], index: int | slice) -> int:
-    return data[index]
-
-first = get([1, 2, 3], 0)
-
-```
-
-And make them like this.
-
-```python
-def get(index: int | slice):
-
-    def inner(data: list[int]):
-
-        return data[index]
-
-    return inner 
-
-first = get(0)([1, 2, 3])
-
-```
-
-Or if that's too much, use the `curry` decorators to make it easier.
-
-```python
-@curry.two
-@curry.first_to_end
-def get(data: list[int], index: int | slice) -> int:
-    return data[index]
-
-first = get(0)([1, 2, 3])
-
-```
-
-Back to Piping, there are three functions worth knowing with `Piper`.
-
-1. `>>`: Put the value inside `Piper` into the function, and return a new `Piper` with the result.
-2. `|`: Put the value inside `Piper` into the function, but keep `Piper` the same.
-3. `>`: Put the value inside `Piper` into the function, and only return the result. Useful for exiting
-the Piper's context and returning the final result.
-
-If the operators aren't working for whatever reason, you can always use the `bind`, `do`, and `apply` methods, which map
-to `>>`, `|`, and `>` respectively.
-
-You can also use the `P` operator with pipes for quick bespoke piping of values. Like so:
-
-```python
-(
-    range(0, 10)
-    |P| list
-    |P| op.where(fn(int, bool)(lambda x: x % 2 == 0))
-    |P| op.map_over(fn(int, int)(lambda x: x + 10))
-    |P| op.fold(fn(int, int, int)(lambda x, y: x + y))
-    |P| print
-)
-```
-
-It doesn't always save space, but it does make it easier to read
-sequential function calls. Because the functions are decoupled
-from their objects, you can pipe arbitrary functions over anything.
-
-## Obvious Errors and Nulls
-
-One of my favorite features of Rust is handling Exceptions as values
-rather than try catching and throwing them. It's great because it makes
-it very obvious when and how things can go wrong and encourages you
-to handle the errors intentionally.
-
-It is a little more verbose though, but the tradeoff is worth it.
-
-### Error Catching
-
-Instead of doing this:
-
-```python
-def get_customer_data(customer_id: int) -> dict:
-    try:
-        customer_data = get_data(customer_id)
-        return customer_data
-    except ValueError as e:
-        print("Wrong id")
-
-data: dict = get_customer_data(10)
-
-```
-
-You do this instead:
-
-```python
-def get_customer_data(customer_id: int) -> Res[dict, ValueError]:
-    try:
-        customer_data = get_data(customer_id)
-        return Ok(customer_data)
-    except ValueError as e:
-        return Err(e)
-
-data: Res[dict, ValueError] = get_customer_data(10)
-
-```
-
-Or you can do this automatically with a decorator:
-
-```python
-@res.safe(ValueError)
-def get_customer_data(customer_id: int) -> dict:
-    return get_data(customer_id)
-
-data: Res[dict, ValueError] = get_customer_data(10)
-
-```
-
-Now it's obvious when things can go wrong and your type hints on your IDE will 
-show you when things can fail.
-
-### Error Handling
-
-You can handle errors with pattern matching a la Rust, unpacking a la Go, or
-with the `res` module a la Gleam.
-
-Here is an example with pattern matching:
-
-```python
-data: Res[dict, ValueError] = get_customer_data(10)
-
-match data:
-    case Ok(customer_data):
-        return customer_data
-    case Err(e):
-        logging.error(e)
-        raise e
-    case _:
-        raise TypeError('Something went wrong')
-
-```
-
-This is great for being thorough with your results. You can see each case
-and easily unpack the data from Ok and Err. It also makes it easy to apply
-a default case or handle complex situations.
-
-But what if I want something simple and fast like in Go? Say no more.
-
-Try this instead:
+### Quick Example
 
 ```python
 
-    data, err = unpack(get_customer_data(10))
-    if err is not None:
-        logging.error(e)
-        raise e
-    if data is None:
-        raise TypeError('Something went wrong')
+# Catch all potential errors in a Res
+@catch_all
+def get_data(api_key: str) -> list[dict[str, str]]:
+    """Pretend API call that could fail"""
+    return [{"foo": 10, "bar": 10}] * 100
 
-```
-
-But wait?! In Go I can do `val, err = could_fail()`. Why do I have to use `unpack`?
-
-It's a python thing. Because `Res` is actually `Ok | Err`, the type hints don't work
-correctly if you unpack them normally, even if you have an `__iter__` method set up,
-and base classes for `__iter__` and blah blah blah.
-
-In short, I had to choose between better unpacking or better pattern matching. I chose
-pattern matching because I think it looks neat, and you only sacrifice one function to
-get it done.
-
-Plus, it's easy to apply functions to results with `P` and `Piper`, remember?
-
-```python
-data, err = get_customer_data(10) |P| unpack
-if err is not None:
-    logging.error(e)
-    raise e
-if data is None:
-    raise TypeError('Something went wrong')
-```
-
-You can also handle results with the `res` module, which has a lot of utilties
-for unwrapping, handling, and transforming results safely. The module shamelessly
-stolen from Rust's excellent methods, but implemented like Gleam.
-
-Here is an example:
-
-```python
-data = res.unwrap(get_customer_data(10))
-```
-
-The above example will give you the Ok data if any, or raise the E instead. You can
-also unwrap the err with `unwrap_err`. Since this is such a common thing, there is
-a shorthand variant called `q` and `qe` which are unwrap and unwrap_err respectively.
-`q` and `qe` are inspired by `?` in Rust.
-
-The res module has a lot inside. Here is an example of an entire flow where we
-are getting customer ids, and then getting total orders from the customer data.
-There are a lot of steps that can fail, so we use `q` to unwrap the errors
-and `safe` to catch them as we do. We can also combine multiple errors into one
-with `combine_errors`.
-
-```python
-@res.safe(HTTPError, ValueError)
-def get_customer_data(customer_id: int) -> dict:
-    return get_data(customer_id)
-
-@res.combine_errors(ValueError(), True)
-@res.safe(HTTPError, ValueError, Nil)
-def accumulate_customer_orders() -> int:
-    customer_ids: list[int] = (
-        Piper(get(customer_endoint))
-        >> fn(Response, dict)(lambda response: response.json())
-        >> op.item('ids')
-        > q
-    ) 
-    total_orders = (
-        Piper(customer_ids)
-        >> op.map_over(get_customer_data)
-        >> op.where(res.is_ok)
-        >> op.map_over(q)
-        >> op.map_over(op.item('orders'))
-        >> op.map_over(q)
-        > op.fold(fn(int, int, int)(lambda x, y: x + y))
-    )
-    return total_orders
+@catch_all
+def get_api_key() -> str:
+    return "hello there"
 
 def main():
-    current_orders: Res[int, ValueError] = accumulate_customer_orders()
-    match current_orders:
-        case Ok(orders):
-            print(f'Currently there are {orders} orders')
-        case Err(e):
-            logging.error(e)
-            ping_slack_error_channel(str(e))
-            raise e
+    val = get_api_key()
+    val >>= get_data                    # Run another function that could fail using api key
+    val ^= lambda: Res.Ok([])           # If err replace with default empty data
+    val >>= Listad                      # Convert data to Listad
+    data = val << unwrap 
+    data >>= lambda r: r.copy()["foo"]  # Run getting foo over each dict
+    data //= lambda foo: f % 10 == 0    # Keep only values that are divisiable by 10
+    total = Piper(data << sum)          # Sum the totals and put in Piper
+    total << print                      # Run print over total
 
 ```
 
-### Null Handling
+## Features
 
-You handle `None` values the same way you handle Exceptions, by using
-decorators or functions to catch values that could be None, and then
-use pattern matching, unpacking, or the `res` module to go from there.
+### Dedicated Operator Grammar
 
-Here are some ways you can catch null values:
+Pythonix brings dedicated operator syntax to Python on special classes or classes that implement the right traits. The grammar is as follows:
 
-If a function value could be `None`, you can use the `some` function to
-catch that and return a `Res[T, Nil]` result, which can be abbreviated to
-`Opt[T]`.
+| Operator | Inplace | Method | Purpose |  Example | Trait |
+------------------------------------------------------------
+| `>>`     | `>>=`   | `map()`    | Transform wrapped value with function | `res >>= lambda x: x + 1` | Map or Ad |
+| `^`      | `^=`    | `map_alt()`| Transform other wrapped value with function | `res ^= ValueError` | MapAlt |
+| `<<`     | `<<=`   | `apply()`  | Transform entire value with function | `res <<= unwrap` | Apply or Ad |
+| `**`     | `**=`   | `fold()`   | Run pairs of values thru function.  | `l **= lambda x, y: x + y` | Fold or Collad |
+| `//`     | `//=`   | `where()`  | Filters elements with function | `l //= lambda x: x == 0` | Where or Collad |
+---------------------------------------------------------------------------------------------------------------
+
+Note that `fold` and `where` are only applicable to iterable classes like lists, tuples, etc. This grammar is held consistently accross the entire package.
+The operators were chosen at **random**! Just kidding, I made sure to use the operators that are used the least and would be least likely to interfere with other processes and still could communicate their intent.
+
+### Handling Exceptions as Values with Res
+
+`Res` is by far the most important class you can use. It wraps the potential for an action to fail and shows you what to expect if it succeeded or failed. You can use the decorators like `safe`, `catch_all`, and `null_safe` to capture the potential for errors or None values.
+
+#### Capturing Without Decorators
 
 ```python
-val: str | None = {'hello': 'world'}.get('hello')
-opt: Opt[str] = some(val)
-```
-
-For function calls that could return `None`, you can have them return `Opt[T]`
-instead.
-
-```python
-# With some
-def get_hello(data: dict[str]) -> Opt[str]:
-    return some(data.get('hello'))
-
-hello: Opt[str] = get_hello({'hello': 'world'})
-
-# With ok and err
-def get_hola(data: dict[str]) -> Res[str, Nil]:
+def attempt_thing() -> Res[int, Exception]:
     try:
-        return ok(Nil)(data['hola'])
-    except KeyError as e:
-        return err(str)(Nil(str(e)))
-
-hola: Res[str, Nil] = get_hola({'hola': 'mundo'})
-# Res[str, Nil] is the same as Opt[str]
+        return Res.Ok(0)
+    except Exception as e:
+        return Res.Err(e)
 ```
 
-Or you can use the `res.null_safe` or `res.null_and_error_safe` decorators to do that for you.
+If you are in a function that doesn't have a return output decorated as `Res` then you'll need to explicitly type hint the `Res` like this.
+
+```python
+some: Res[int, Nil] = Res.Ok(10) # Using assignment
+ok = Res[int, Exception].Ok(10)  # Using explicit type hints
+```
+
+#### Capturing With Decorators
+
+To make things easier the `res` module provides decorators to make working with Exceptions cleaner. There are quite a few, but the most useful are `safe`, `catch_all`, and `null_safe`.
+
+`safe` will catch specific errors and let others slip by. It won't catch None values that are returned.
+
+```python
+@safe(KeyError, IndexError)
+def get_foo(data: dict[str, int]) -> int:
+    return data.copy()['foo']
+
+foo: Res[int, KeyError | IndexError] = get_foo({"foo": 10})
+```
+
+`catch_all` will catch all Exceptions thrown. Useful, but not very specific. It's recommended to use `safe` if you know exactly what could happen.
+
+```python
+@catch_all
+def get_foo(data: dict[str, int]) -> int:
+    return data.copy()['foo']
+
+foo: Res[int, Exception] = get_foo({"foo": 10})
+
+```
+
+`null_safe` will catch a returned value that is None. Useful for eliminating the potential for unexpected None values. `Nil` is a special Exception that shows that an None was found.
 
 ```python
 @null_safe
-def get_hello(data: dict[str]) -> str | None:
-    return data.get('hello')
+def get_foo(data: dict[str, int]) -> int:
+    return data.copy().get('foo')
 
-hello: Opt[str] = get_hello({'hello': 'world'})
-
-@null_and_error_safe(KeyError)
-def get_hola(data: dict[str]) -> str | None:
-    return data['hola']
-
-hola: Res[str, Nil] = get_hola({'hola': 'mundo'})
-# Res[str, Nil] is the same as Opt[str]
+foo: Res[int, Nil] = get_foo({"foo": 10})
 ```
 
-Using these patterns makes it almost impossible to have unexpected or unhandled null
-values in your code. Isn't that great?!
+#### Getting values out of `Res`
 
-## Additional Features
+Getting data out of `Res` is easy and you have a lot of ways to do it. You can use pattern matching, unpacking, methods, and iteration.
 
-Some other notable features include:
+##### Pattern Matching a la Rust
 
-    * Log concatentation with the `trail` module
-    * Pipeable asserts with `prove`
-    * Supplement modules for common data structures with `pair`, `tup`, `dict_utils`, and `deq`.
-    * Custom operator decorators with `grammar`
-    * Type hinted lambda functions with `fn`
-
-Each module is available for import like this:
+Pattern matching works well with `Res`, but requires some extra type hinting if you are using a static type checker. This will be a favorite for Rusty people.
 
 ```python
-from pythonix.prelude import *
+match Res.Some(10):
+    case Res(int(inner), True):
+        ... # Do stuff with inner now
+    case Res(e):
+        ... # Do stuff with Nil. Raise it, log it, whatever.
 ```
 
-Import all from prelude will include all of the essentials like `Piper`, `P`, common `res` classes and functions, `fn`, etc.
+##### Unpacking a la Go
 
-Or you can specify a particular module like this:
+You can unpack the `Res` with the `unpack` method. Very similar to error handling in Go.
 
 ```python
-import pythonix.op as op
-import pythonix.tup as tup
-import pythonix.deq as deq
+val, err = Res[int, Exception].Ok(10)
+if err is not None:
+    raise err
 ```
 
-All the modules are fully tested, promote immutability, fully type checked and transparent, and fully documented.
+##### Handling with Unwrap methods
 
-Enjoy!
+You can use methods on res to pull out the Ok or Err values. It's recommended that you inspect the `Res` first though, since using them can panic your program if they are not in the expected state.
+
+This is a safe example because it checkd for an Ok state before unwrapping.
+
+```python
+res = Res[int, Exception].Ok(10)
+if res:
+    val = res.unwrap()
+```
+
+This is an unsafe example that could cause your code to panic.
+
+```python
+res = Res[int, Exception].Err(Exception("oops"))
+res.unwrap()
+```
+
+##### Handling with @safe
+
+`safe` will catch any Exception that is thrown by its function, and `unwrap` or `unwrap_err` will throw an exception if they are in an invalid state. So, you could pass throw the exception without any worries, knowing it would be passed up into its value later. Since this is so common, `unwrap` and `unwrap_err` have shortcuts with `q` and `e`.
+
+```python
+@safe(Exception)
+def go_thing() -> int:
+    data_attempt: Res[list, Exception] = get_data()
+    data = data_attempt.q
+    return data
+
+```
+
+##### Handling with Transformations
+
+You can also handle Exceptions without extracting the desired value from the `Res` by using `map` and `map_alt`. They go to `>>` and `^` respectively.
+
+Here's an example with the methods:
+
+```python
+    some: Res[int, Nil] = get_data()
+    data = (
+        some
+        .map(lambda x: x + 10)
+        .map(do_foo)
+        .map_err(send_error_report)
+        .map_err(lambda: Res.Some(0))
+    )
+```
+
+Here's the same example using operator grammar.
+
+```python
+    some: Res[int, Nil] = get_data()
+    some >>= lambda x: x + 10
+    some >>= do_foo
+    some ^= send_error_report
+    some ^= lambda: Res.Some(0)
+```
+
+##### Handle with Iteration
+
+You can also iterate through the `Res` to extract its Ok value. It will only return an item if its in an Ok state. It can automatically iterate through 
+`lists`, `tuples`, and `sets` automatically if in an Ok state.
+
+Here's an example with a normal Ok `Res`.
+
+```python
+for val in Res.Some(10):
+    val # Code inside this loop is okay
+
+val = [val for val in Res.Some(10)] # Will only have a value if Ok
+
+```
+
+Here's an example of automatically iterating through a contained `list`.
+
+```python
+for val in Res.Some([1, 2, 3]):
+    val # Will be 1, then 2, then 3
+
+```
+
+Will return an empty iterator if in an Err state
+
+```python
+for val in Res[int, Nil].Nil():
+    val # This code would never be executed
+```
+
+### Upgraded collections
+
+A big point of Pythonix is to make working with data clean and concise while reducing the chance for errors. Part of that is `Res`, which makes Exceptions safer to handle and more obvious. The other part is upgrading the most common data structures to be better.
+
+The most common data types in Python are `list`, `dict`, `tuple`, `set`, and `deque`. To make working with them easier, the most common operations for those data types have been
+added as methods, and then as operators using the operator grammar shown above.
+
+To get started, just wrap your data structures as their respective upgraded versions. `Listad`, `Dictad`, `Tuplad`, `Set` and `Deq`. All of these types have the same operators and methods added on, as well as making some of their methods that could panic more safe with `Res`.
+
+Here's a pretty common example of some work with normal `list`. Obviously this is redundant but bear with me.
+
+```python
+out = []
+for i in range(0, 100):
+    i += 10
+    if i % 2 == 0:
+        w = str(i)
+        chars = w.split()
+        for char in chars:
+            if char == '0':
+                out.append(char)
+final = reduce(operator.concat, out)
+```
+
+Here's the same result using `Listad`.
+
+```python
+data: Listad[int] = Listad([i for i in range(0, 100)])
+data >>= fn(int, int)(lambda x: x + 10)
+data //= fn(int, bool)(lambda x: x % 2 == 0)
+data >>= str
+data >>= str.split
+data //= fn(str, bool)(lambda c: c == '0')
+data **= operator.concat
+```
+
+For clarity here it is with methods.
+
+```python
+data: Listad[int] = Listad([i for i in range(0, 100)])
+chars = (
+    data
+    .map(fn(int, int)(lambda x: x + 10))
+    .where(fn(int, bool)(lambda x: x % 2 == 0))
+    .map(str)
+    .where(fn(str, bool)(lambda c: c == '0'))
+    .fold(operator.concat)
+)
+```
+
+Pretty nice right?!
+
+### Other Features
+
+Some additional features can be found in the supplementary modules, included with Pythonix.
+
+|-------------|-------------------------------------------------------------|
+| Module Name | Purpose                                                     |
+|-------------|-------------------------------------------------------------|
+| crumb       | Attach logs to values and accumulate them                   |
+| prove       | Simple assertion functions                                  |
+| utils       | Safe functions to help working with Res and collections     |
+| fn          | Lambda function utilities                                   |
+| curry       | Automatic currying of functions                             |
+| grammar     | Classes and pipes for custom grammar                        |
+| traits      | Classes to make custom classes that use the operator syntax |
+|-------------|-------------------------------------------------------------|

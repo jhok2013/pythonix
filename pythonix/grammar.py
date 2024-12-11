@@ -65,7 +65,13 @@ from pythonix.internals.grammar import (
     PipeApplyPrefix,
     PipeApplySuffix,
     Piper,
-    P,
-    do,
-    inner,
+    p,
+    x,
+    FnPipe,
+    PipeFn,
+    InfixPipe,
+    ShiftApplyInfix,
+    ShiftApplyPrefix,
+    AndApplyPrefix,
+    ShiftApplySuffix
 )
