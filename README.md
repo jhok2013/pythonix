@@ -5,7 +5,7 @@ Pythonix V3 brings powerful error handling inspired by Rust and Go, type hinted 
 The most important part of programming is knowing what can break and why, and being able to handle those issues the right way. Usingn Pythonix's `Res` type
 allows you to do that easily, in the way that looks best to you.
 
-TL;DR: You can use operators like `>>=`, `^=`, `**=`, `//=`, `<<=`, their normal operators, or their methods `map`, `map_alt` / `map_err`, `fold`, `where`, `apply` respectivel on classes that use the right traits. You handle errors with `Res`, None values with `Res.Some()`, and quickly do stuff to data without having to write comprehensions, for loops, or use the ugly builtin functions. Plus you can make type hinted lamdbda functions with `fn()`, which honestly should have been a thing already. If you don't like the operator grammar then you can use the methods on each class instead.
+TL;DR: You can use operators like `>>=`, `^=`, `**=`, `//=`, `<<=`, their normal operators, or their methods `map`, `map_alt` / `map_err`, `fold`, `where`, `apply` respectively on classes that use the right traits. You handle errors with `Res`, None values with `Res.Some()`, and quickly do stuff to data without having to write comprehensions, for loops, or use the ugly builtin functions. Plus you can make type hinted lamdbda functions with `fn()`, which honestly should have been a thing already. If you don't like the operator grammar then you can use the methods on each class instead.
 
 ### Quick Example
 
@@ -40,14 +40,13 @@ def main():
 
 Pythonix brings dedicated operator syntax to Python on special classes or classes that implement the right traits. The grammar is as follows:
 
-| Operator | Inplace | Method | Purpose |  Example | Trait |
-------------------------------------------------------------
-| `>>`     | `>>=`   | `map()`    | Transform wrapped value with function | `res >>= lambda x: x + 1` | Map or Ad |
-| `^`      | `^=`    | `map_alt()`| Transform other wrapped value with function | `res ^= ValueError` | MapAlt |
-| `<<`     | `<<=`   | `apply()`  | Transform entire value with function | `res <<= unwrap` | Apply or Ad |
-| `**`     | `**=`   | `fold()`   | Run pairs of values thru function.  | `l **= lambda x, y: x + y` | Fold or Collad |
-| `//`     | `//=`   | `where()`  | Filters elements with function | `l //= lambda x: x == 0` | Where or Collad |
----------------------------------------------------------------------------------------------------------------
+| Operator | Inplace | Method     | Purpose                             | Example                    |
+|----------|---------|------------|-------------------------------------|----------------------------|
+| `>>`     | `>>=`   | `map()`    | Change value with function          | `res >>= lambda x: x + 1`  |
+| `^`      | `^=`    | `map_alt()`| Change other value with function    | `res ^= ValueError`        | 
+| `<<`     | `<<=`   | `apply()`  | Run func over self                  | `res <<= unwrap`           | 
+| `**`     | `**=`   | `fold()`   | Run pairs of values thru function.  | `l **= lambda x, y: x + y` | 
+| `//`     | `//=`   | `where()`  | Filter elements with function       | `l //= lambda x: x == 0`   |
 
 Note that `fold` and `where` are only applicable to iterable classes like lists, tuples, etc. This grammar is held consistently accross the entire package.
 The operators were chosen at **random**! Just kidding, I made sure to use the operators that are used the least and would be least likely to interfere with other processes and still could communicate their intent.
@@ -279,7 +278,6 @@ Pretty nice right?!
 
 Some additional features can be found in the supplementary modules, included with Pythonix.
 
-|-------------|-------------------------------------------------------------|
 | Module Name | Purpose                                                     |
 |-------------|-------------------------------------------------------------|
 | crumb       | Attach logs to values and accumulate them                   |
@@ -289,4 +287,3 @@ Some additional features can be found in the supplementary modules, included wit
 | curry       | Automatic currying of functions                             |
 | grammar     | Classes and pipes for custom grammar                        |
 | traits      | Classes to make custom classes that use the operator syntax |
-|-------------|-------------------------------------------------------------|
