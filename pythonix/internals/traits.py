@@ -129,9 +129,7 @@ class Where(ABC):
 class Separate(Generic[T], ABC):
 
     @abstractmethod
-    def separate(
-        self, predicate: Callable[[T], bool]
-    ) -> tuple: ...
+    def separate(self, predicate: Callable[[T], bool]) -> tuple: ...
 
 
 class Fold(Generic[T], ABC):
@@ -161,6 +159,7 @@ class Flate(Generic[T]):
 
     @abstractmethod
     def inflate(self, n_chunks: int) -> Flate[Iterator[T]]: ...
+
 
 class Collad(Ad[T], Where, Fold[T]):
     """Defines behavior for an `Iterable[T]` class to map and filter itself"""
