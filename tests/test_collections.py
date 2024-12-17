@@ -1,10 +1,8 @@
 from unittest import TestCase
 from pythonix.prelude import *
-from pythonix.collections import Listad, Dictad, Tuplad, Set, Deq
-from pythonix.traits import Colladic
+from pythonix.collections import Listad, Dictad, Tuplad, Set, Deq, LazyPlan
 
 from operator import add
-
 
 increment = fn(int, int)(lambda x: x + 1)
 is_even = fn(int, bool)(lambda n: n % 2 == 0)
@@ -31,17 +29,23 @@ class TestDeq(TestCase):
         self.assertEqual(d, 32)
     
 
-    def test_colladicness(self) -> None:
+class TestLazyAd(TestCase):
 
-        arr = Listad([1, 2, 3])
-        if not isinstance(arr, Colladic):
-            self.fail()
+    def test_lazy_ad(self) -> None:
+        plan = LazyPlan[int, int]()
+        new = (
+            plan
+            .map(fn(int, int)(lambda x: x + 10))
+            .map(str)
+            .map(str.split)
+            .map(lambda chars: '/'.join(chars))
+            .where(lambda w: len(w.split()) > 10)
+            .build([1, 2, 3, 4, 5])
+        )
 
-        arr = Set([1, 2, 3])
-        if not isinstance(arr, Colladic):
-            self.fail()
-
-        arr = Tuplad([1, 2, 3])
-        if not isinstance(arr, Colladic):
-            self.fail()
-
+        plan >>= fn(int, int)(lambda x: x + 10)
+        plan >>= fn(int, str)(lambda x: str(x))
+        plan >>= str.split
+        plan >>= fn(list[str], str)(lambda l: '/'.join(l))
+        plan //= fn(str, bool)(lambda w: len(w.split()) > 0)
+        lazy = plan.build([1, 2, 3])

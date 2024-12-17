@@ -3,6 +3,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import (
+    Iterable,
     TypeVar,
     Callable,
     Generic,
@@ -33,7 +34,7 @@ class Map(Generic[T], ABC):
         return self.map(using)
 
     @abstractmethod
-    def map(self, using: Callable[[T], U]) -> Map[U]:
+    def map(self, using: Callable[[T], U]):
         """Transforms inner value and returns updated instance of self"""
         ...
 
@@ -125,6 +126,14 @@ class Where(ABC):
     def where(self, predicate: Callable[[T], bool]) -> Self: ...
 
 
+class Separate(Generic[T], ABC):
+
+    @abstractmethod
+    def separate(
+        self, predicate: Callable[[T], bool]
+    ) -> tuple: ...
+
+
 class Fold(Generic[T], ABC):
     """Defines behavior for folding inner data using `fold`, `**`, and `**=`"""
 
@@ -143,6 +152,15 @@ class Ad(Map[T], Apply):
 
     ...
 
+
+class Flate(Generic[T]):
+
+    @abstractmethod
+    @staticmethod
+    def flatten(iterable: Iterable[Iterable[U]]): ...
+
+    @abstractmethod
+    def inflate(self, n_chunks: int) -> Flate[Iterator[T]]: ...
 
 class Collad(Ad[T], Where, Fold[T]):
     """Defines behavior for an `Iterable[T]` class to map and filter itself"""
@@ -168,5 +186,7 @@ class Colladic(Protocol[T]):
     def map(self, using: Callable) -> Any: ...
 
     def apply(self, using: Callable[[Self], U]) -> U: ...
+
+    def separate(self, predicate: Callable[[T], bool]) -> tuple: ...
 
     def __iter__(self) -> Iterator[T]: ...

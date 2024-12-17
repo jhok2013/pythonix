@@ -6,6 +6,6 @@ from pythonix.internals.collections import (
     Deq,
     Set,
     Pair,
-    flatten,
-    separate,
+    LazyPlan,
+    Lazy
 )

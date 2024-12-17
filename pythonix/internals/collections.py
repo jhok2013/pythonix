@@ -1,8 +1,11 @@
 """Advanced versions of `list`, `tuple`, `dict`, and `deque` with builtin mapping, filtering, and folding"""
+
 from __future__ import annotations
+from copy import deepcopy
 from collections.abc import Iterator, Set as AbstractSet
 from functools import reduce
 from typing import (
+    cast,
     AbstractSet,
     List,
     TypeVar,
@@ -11,13 +14,27 @@ from typing import (
     Iterable,
     SupportsIndex,
     Protocol,
+    Generic,
 )
+from itertools import tee
 from typing_extensions import Self
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pythonix.internals.res import Res, Nil, catch_all, null_and_error_safe
 from pythonix.internals.utils import unwrap
-from pythonix.internals.traits import Collad, MapAlt, Unwrap, Ad, UnwrapAlt
+from pythonix.internals.traits import (
+    Collad,
+    MapAlt,
+    Flate,
+    Unwrap,
+    Ad,
+    UnwrapAlt,
+    Separate,
+    Fold,
+    Map,
+    Apply,
+    Where,
+)
 
 
 _KT = TypeVar("_KT")
@@ -49,10 +66,8 @@ class SupportsSafeGetItem(Protocol[T_co]):  # type: ignore
     def get(self, key: SupportsIndex) -> Res[T_co, Nil]: ...
 
 
-@dataclass(
-    frozen=True, eq=True, init=True, match_args=True, order=True, repr=True
-)
-class Pair(Tuple[K, T], Ad[T], Unwrap[T], MapAlt[T], UnwrapAlt[K]):
+@dataclass(frozen=True, eq=True, init=True, match_args=True, order=True, repr=True)
+class Pair(Tuple[K, T], Ad[T], Unwrap[T], MapAlt[K], UnwrapAlt[K]):
     """Wrapper for tuple key value pair with additional features and type safety
 
     Args:
@@ -130,7 +145,7 @@ class Pair(Tuple[K, T], Ad[T], Unwrap[T], MapAlt[T], UnwrapAlt[K]):
         return self.inner
 
 
-class Set(set[T], Collad[T]):
+class Set(set[T], Collad[T], Flate[T], Separate[T]):
     """Upgraded version of `set` with builtin `map`, `where`, `fold`, and `apply` operators.
 
     NOTE:
@@ -205,6 +220,21 @@ class Set(set[T], Collad[T]):
     def __rshift__(self, using: Callable[[T], U]) -> Set[U]:
         return self.map(using)
 
+    def inflate(self, n_chunks: int) -> Set[Iterator[T]]:
+        return Set(tee(self, n_chunks))
+
+    @staticmethod
+    def flatten(iterable: Iterable[Iterable[U]]) -> Set[U]:
+        return Set([nitem for niter in iterable for nitem in niter])
+
+    def separate(self, predicate: Callable[[T], bool]) -> Tuple[Set[T], Set[T]]:
+        def not_predicate(elem: T) -> bool:
+            return not predicate(elem)
+
+        yes = self // predicate
+        no = self // not_predicate
+        return yes, no
+
     def map(self, using: Callable[[T], U]) -> Set[U]:
         """Runs function over each element and keeps the results. Maps to `>>` and `>>=`
 
@@ -226,7 +256,6 @@ class Set(set[T], Collad[T]):
             Set[T]: Updated Set
         """
         return Set((t for t in self if predicate(t)))
-
 
     def fold(self, using: Callable[[T, T], T]) -> T:
         """Folds a function over the elements, returning its final result. Maps to `**` and `**=`
@@ -263,7 +292,7 @@ class Set(set[T], Collad[T]):
         return self
 
 
-class Listad(List[T], Collad[T]):
+class Listad(List[T], Collad[T], Flate[T], Separate[T]):
     """Upgraded version of `list` with builtin `map`, `where`, `fold`, and `apply` operators.
 
     NOTE:
@@ -304,11 +333,18 @@ class Listad(List[T], Collad[T]):
 
     """
 
+    def inflate(self, n_chunks: int) -> Listad[Iterator[T]]:
+        return Listad(tee(self, n_chunks))
+
+    @staticmethod
+    def flatten(iterable: Iterable[Iterable[U]]) -> Listad[U]:
+        return Listad([nitem for niter in iterable for nitem in niter])
+
     def __iter__(self) -> Iterator[T]:
         return super().__iter__()
 
-    def __iadd__(self, value: Iterable[T]) -> Self:
-        return super().__iadd__(value)
+    def __iadd__(self, value: Iterable[T]) -> Listad[T | _S]:
+        return Listad(super().__add__(value))
 
     def __add__(self, value: Iterable[_S]) -> Listad[T | _S]:
         return Listad(super().__add__(value))  # type: ignore
@@ -346,6 +382,16 @@ class Listad(List[T], Collad[T]):
 
     def __floordiv__(self, predicate: Callable[[T], bool]) -> Listad[T]:
         return self.where(predicate)
+
+    def separate(self, predicate: Callable[[T], bool]) -> tuple[Listad[T], Listad[T]]:
+        yes: Listad[T] = Listad([])
+        no: Listad[T] = Listad([])
+        for elem in self:
+            if predicate(elem):
+                yes.append(elem)
+            else:
+                no.append(elem)
+        return yes, no
 
     def where(self, predicate: Callable[[T], bool]) -> Listad[T]:
         """Filters elements using `predicate` that return True. Uses `//` and `//=`.
@@ -423,8 +469,8 @@ class Listad(List[T], Collad[T]):
             Res[T, Nil]: The retrieved value as an Opt[T]. Must be handled.
         """
         return self[index]
-    
-    @null_and_error_safe(IndexError) 
+
+    @null_and_error_safe(IndexError)
     def pop(self, index: SupportsIndex = -1) -> T:
         """Retrieves and removes an element from the Litad
 
@@ -432,45 +478,12 @@ class Listad(List[T], Collad[T]):
             index (SupportsIndex, optional): Index of the item to be popped out. Defaults to -1.
 
         Returns:
-            Res[T, Nil]: Res containing the popped value 
+            Res[T, Nil]: Res containing the popped value
         """
         return super().pop(index)
 
 
-def flatten(iterable: Iterable[Iterable[T]]) -> Iterable[T]:
-    """Flattens nested iterable
-
-    Args:
-        iterable (Iterable[Iterable[T]]): Nested iterable
-
-    Returns:
-        Iterable[T]: Unnested iterable
-    """
-    return (elem for niter in iterable for elem in niter)
-
-def separate(iter_res: Iterable[Res[T, E]]) -> tuple[Listad[T], Listad[E]]:
-    """Convenience func to separate Ok and Err into separate Listads
-
-    Args:
-        iter_res (Iterable[Res[T, E]]): Iterable full of Res[T, E]
-
-    Returns:
-        tuple[Listad[T], Listad[E]]: pair of Listads with Ok or Err values respectively
-
-    #### Examples ::
-
-        >>> results = Listad([Res.Some(10), Res.Some(10), Res.Nil()])
-        >>> oks, errs = results << separate
-        >>> oks >>= str
-        >>> oks << print
-        ['10', '10']
-    """
-    oks = Listad(res.q for res in iter_res if res)
-    errs = Listad(res.e for res in iter_res if not res)
-    return oks, errs
-
-
-class Tuplad(Tuple[T], Collad[T]):
+class Tuplad(Tuple[T, ...], Collad[T], Flate[T], Separate[T]):
     """Upgraded version of `tuple` with builtin `map`, `where`, `fold`, and `apply` operators.
 
     NOTE:
@@ -546,6 +559,21 @@ class Tuplad(Tuple[T], Collad[T]):
 
     def __floordiv__(self, predicate: Callable[[T], bool]) -> Tuplad[T]:
         return self.where(predicate)
+
+    def inflate(self, n_chunks: int) -> Tuplad[Iterator[T]]:
+        return Tuplad(tee(self, n_chunks))
+
+    @staticmethod
+    def flatten(iterable: Iterable[Iterable[U]]) -> Tuplad[U]:
+        return Tuplad([nitem for niter in iterable for nitem in niter])
+
+    def separate(self, predicate: Callable[[T], bool]) -> Tuple[Tuplad[T], Tuplad[T]]:
+        def not_predicate(elem: T):
+            return not predicate(elem)
+
+        yes = self // predicate
+        no = self // not_predicate
+        return yes, no
 
     def where(self, predicate: Callable[[T], bool]) -> Tuplad[T]:
         """Filters elements using `predicate` that return True. Uses `//` and `//=`.
@@ -629,7 +657,6 @@ class Tuplad(Tuple[T], Collad[T]):
 
     def __add__(self, value: tuple[_S] | Tuplad[_S]) -> Tuplad[T | _S]:
         return Tuplad(super().__add__(value))
-    
 
 
 class Dictad(dict[K, T], Collad[T], MapAlt[K]):
@@ -681,6 +708,16 @@ class Dictad(dict[K, T], Collad[T], MapAlt[K]):
         40
 
     """
+
+    def separate(
+        self, predicate: Callable[[K, T], bool]
+    ) -> Tuple[Dictad[K, T], Dictad[K, T]]:
+        def not_predicate(key: K, value: T) -> bool:
+            return not predicate(key, value)
+
+        yes = self // predicate
+        no = self // not_predicate
+        return yes, no
 
     def __irshift__(self, using: Callable[[T], U]) -> Dictad[K, U]:
         return self.map(using)
@@ -816,20 +853,20 @@ class Dictad(dict[K, T], Collad[T], MapAlt[K]):
 
     def __or__(self, other: dict[L, U]) -> Dictad[K | L, T | U]:
         return Dictad(dict.__or__(self, other))
-    
+
     def copy(self) -> Dictad[K, T]:
         """Shallow copies the Dictad and returns it"""
         return Dictad(super().copy())
-    
+
     @staticmethod
     def fromkeys(keys: Iterable[K], value: T) -> Dictad[K, T]:
         return Dictad(dict.fromkeys(keys, value))
-    
+
     def __iter__(self) -> Iterator[K]:
         return super().__iter__()
 
 
-class Deq(deque[T], Collad[T]):
+class Deq(deque[T], Collad[T], Flate[T], Separate[T]):
     """Upgraded version of `deque` with safe retrieval, fluent interface, and better type support"""
 
     def __init__(self, iterable: Iterable[T], maxlen: int | None = None):
@@ -846,6 +883,23 @@ class Deq(deque[T], Collad[T]):
             return Res.Some(super().__getitem__(key))
         except (IndexError, KeyError) as e:
             return Res[T, Nil].Nil(str(e))
+
+    def inflate(self, n_chunks: int) -> Deq[Iterator[T]]:
+        return Deq(tee(self, n_chunks))
+
+    @staticmethod
+    def flatten(iterable: Iterable[Iterable[U]]) -> Deq[U]:
+        return Deq(nitem for niter in iterable for nitem in niter)
+
+    def separate(self, predicate: Callable[[T], bool]) -> Tuple[Deq[T], Deq[T]]:
+        yes: Deq[T] = Deq([])
+        no: Deq[T] = Deq([])
+        for elem in self:
+            if predicate(elem):
+                yes.append(elem)
+            else:
+                no.append(elem)
+        return yes, no
 
     def get(self, index: int) -> Res[T, Nil]:
         """Retrieves a value as an `Opt[T]` at a given index
@@ -1044,3 +1098,88 @@ class Deq(deque[T], Collad[T]):
             Opt[int]: Maximum capactity, else Nil
         """
         return Res.Some(super().maxlen)
+
+
+@dataclass(frozen=True, match_args=True)
+class Step(Generic[T, U], object):
+
+    op: Callable[[T], U]
+
+    def __repr__(self) -> str:
+        try:
+            types = self.op.__annotations__.copy()
+            _, ret_type = types.popitem()
+            params = ", ".join([f"{k}: {v}" for k, v in types.items()])
+            notes = f"({params}) -> {ret_type})"
+        except AttributeError:
+            notes = self.op.__name__
+        class_name: str = self.__class__.__name__
+        return f"{class_name}({notes})"
+
+    @abstractmethod
+    def __call__(self, iterable: Iterable[T]) -> Iterator[U]: ...
+
+
+class Bind(Step[T, U]):
+
+    def __call__(self, data: Iterable[T]) -> Iterator[U]:
+        return map(self.op, data)
+
+
+class Filter(Step[T, T]):
+
+    def __init__(self, op: Callable[[T], bool]) -> None:
+        super().__init__(op)  # type: ignore
+
+    def __call__(self, data: Iterable[T]) -> Iterator[T]:
+        return filter(self.op, data)
+
+
+@dataclass(frozen=True, match_args=True)
+class LazyPlan(Generic[T, U], Map[U], Where):
+
+    steps: tuple[Step, ...] = field(init=False, default_factory=tuple)
+
+    def __irshift__(self, using: Callable[[U], V]) -> LazyPlan[T, V]:
+        return self.map(using)
+
+    def __rshift__(self, using: Callable[[U], V]) -> LazyPlan[T, V]:
+        return self.map(using)
+
+    def map(self, using: Callable[[U], V]) -> LazyPlan[T, V]:
+        new = LazyPlan[T, V]()
+        object.__setattr__(new, "steps", self.steps + (Bind(using),))
+        return new
+
+    def where(self, predicate: Callable[[U], bool]) -> LazyPlan[T, U]:  # type: ignore
+        new = LazyPlan[T, U]()
+        object.__setattr__(new, "steps", self.steps + (Filter(predicate),))
+        return new
+
+    def build(self, iterable: Iterable[T]) -> Lazy[T, U]:
+        return Lazy(iterable, deepcopy(self))
+
+    def __ror__(self, iterable: Iterable[T]) -> Lazy[T, U]:
+        return self.build(iterable)
+
+    def __ior__(self, iterable: Iterable[T]) -> Lazy[T, U]:
+        return self.build(iterable)
+
+
+@dataclass(frozen=True, match_args=True)
+class Lazy(Generic[T, U], Unwrap[Iterator[U]], Fold[U], Apply):
+
+    iterable: Iterable[T]
+    plan: LazyPlan[T, U]
+
+    def __iter__(self) -> Iterator[U]:
+        out = iter(self.iterable)
+        for step in self.plan.steps:
+            out = step(out)
+        return cast(Iterator[U], out)
+
+    def unwrap(self) -> Iterator[U]:
+        return iter(self)
+
+    def fold(self, using: Callable[[U, U], U]) -> U:
+        return reduce(using, self)

@@ -9,5 +9,5 @@ from pythonix.internals.traits import (
     Unwrap,
     Where,
     UnwrapAlt,
-    Colladic
+    Separate
 )
