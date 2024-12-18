@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 from copy import deepcopy
-from collections.abc import Iterator, Set as AbstractSet
+from abc import abstractmethod
 from functools import reduce
 from typing import (
     cast,
     AbstractSet,
+    Iterator,
     List,
     TypeVar,
     Callable,

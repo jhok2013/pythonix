@@ -153,8 +153,8 @@ class Ad(Map[T], Apply):
 
 class Flate(Generic[T]):
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def flatten(iterable: Iterable[Iterable[U]]): ...
 
     @abstractmethod

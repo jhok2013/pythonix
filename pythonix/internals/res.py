@@ -1,8 +1,7 @@
 """Handle Exceptions and None values with `Res` type and decorators."""
 from __future__ import annotations
-from inspect import signature
+from copy import deepcopy
 from typing import (
-    Iterable,
     Generic,
     TypeVar,
     Callable,
@@ -124,7 +123,7 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
         >>> 4 in some_list
         False
     
-    Always returns `False` if in Err state
+    Always returns `False` if in Err state ::
 
         >>> nil = Res[int, Nil].Nil()
         >>> 10 in nil
@@ -533,12 +532,7 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
 
     def map(
         self,
-        using: (
-            Callable[[], Res[U, F]]
-            | Callable[[], U]
-            | Callable[[T], Res[U, F]]
-            | Callable[[T], U]
-        ),
+        using: Callable[[], Res[U, F]] | Callable[[T], Res[U, F]] | Callable[[], U] | Callable[[T], U]
     ) -> Res[U, E] | Res[U, E | F]:
         """Transforms Ok value, leaving Err untouched. Same as `>>` and `>>=`.
 
@@ -579,26 +573,29 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
             >>> ok <<= unwrap
             20
         """
-        sig = signature(using)
-        params = list(sig.parameters.keys())
-        param_len = len(params)
         for ok in self:
-            if param_len == 1:
-                f = cast(Callable[[T], Res[U, F] | U], using)
-                out = f(ok)
-            elif param_len == 0:
-                f = cast(Callable[[], Res[U, F] | U], using)
-                out = f()
-            else:
-                raise ValueError(
-                    "Invalid func type. Must only contain 1 or 0 parameters."
-                )
-
-            if not isinstance(out, Res):
-                return Res.Ok(out)
-            return cast(Res[U, E | F], out)
-        return Res[U, E | F].Err(cast(E, self.inner))
-
+            try:
+                f = cast(Callable[[T], U | Res[U, F]], using)
+                f_out: U | Res[U, F] = f(ok)
+                match f_out:
+                    case Res(inner, True):
+                        return Res[U, E | F].Ok(cast(U, inner))
+                    case Res(inner, False):
+                        return Res[U, E | F].Err(cast(E | F, inner))
+                    case u:
+                        return Res[U, E].Ok(cast(U, u))
+            except TypeError:
+                f_once = cast(Callable[[], U | Res[U, F]], using)
+                f_once_out: U | Res[U, F] = f_once()
+                match f_once_out:
+                    case Res(inner, True):
+                        return Res[U, E | F].Ok(cast(U, inner))
+                    case Res(inner, False):
+                        return Res[U, E | F].Err(cast(E | F, inner))
+                    case u:
+                        return Res[U, E].Ok(cast(U, u))
+        return cast(Res[U, E], deepcopy(self))
+            
     @overload
     def __xor__(self, using: Callable[[], Res[U, F]]) -> Res[T | U, F]: ...
 
@@ -710,28 +707,30 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
             ValueError('Found None while expecting something')
 
         """
-        sig = signature(using)
-        params = list(sig.parameters.keys())
-        param_len = len(params)
-        if not self:
-            err = cast(E, self.inner)
-            if param_len == 1:
-                f = cast(Callable[[E], Res[U, F] | F], using)
-                out = f(err)
-            elif param_len == 0:
-                f = cast(Callable[[], Res[U, F] | U], using)
-                out = f()
-            else:
-                raise ValueError(
-                    "Invalid func type. Must only contain 1 or 0 parameters."
-                )
+        _, err = self.unpack()
+        if err is None:
+            return cast(Res[U, E], deepcopy(self))
 
-            if not isinstance(out, Res):
-                return Res.Err(out)
-            return cast(Res[T | U, F], out)
-
-        ok = cast(T | U, self.inner)
-        return Res[T | U, F].Ok(ok)
+        try:
+            f = cast(Callable[[E], F | Res[U, F]], using)
+            f_out: F | Res[U, F] = f(err)
+            match f_out:
+                case Res(inner, True):
+                    return Res[T | U, F].Ok(cast(T | U, inner))
+                case Res(inner, False):
+                    return Res[T | U, F].Err(cast(F, inner))
+                case f:
+                    return Res[T, F].Err(cast(F, f))
+        except TypeError:
+            f_once = cast(Callable[[], F | Res[U, F]], using)
+            f_once_out: F | Res[U, F] = f_once()
+            match f_once_out:
+                case Res(inner, True):
+                    return Res[T | U, F].Ok(cast(T | U, inner))
+                case Res(inner, False):
+                    return Res[T | U, F].Err(cast(F, inner))
+                case f:
+                    return Res[T, F].Err(cast(F, f))
 
     def convert_err(self, err_type: type[F]) -> Res[T, F]:
         """Converts an Exception of one type to another if Err
@@ -824,8 +823,8 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
                 try:
                     f(err)
                 except TypeError as e:
-                    f = cast(Callable[[], U], using)
-                    f()
+                    f_once = cast(Callable[[], U], using)
+                    f_once()
                 finally:
                     return Res[T, E].Err(err)
             case Res(t):

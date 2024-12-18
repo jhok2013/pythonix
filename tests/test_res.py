@@ -103,7 +103,7 @@ class TestOk(TestCase):
 
         match ok:
             case Res(t, True):
-                self.assertEquals(10, t)
+                self.assertEqual(10, t)
             case Res(e):
                 self.assertIsInstance(e, Nil)
             case _:
@@ -111,7 +111,7 @@ class TestOk(TestCase):
 
         match err:
             case Res(t, True):
-                self.assertEquals(10, t)
+                self.assertEqual(10, t)
             case Res(e):
                 self.assertIsInstance(e, Nil)
             case _:
