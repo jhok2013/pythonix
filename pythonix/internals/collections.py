@@ -1,9 +1,9 @@
 """Advanced versions of `list`, `tuple`, `dict`, and `deque` with builtin mapping, filtering, and folding"""
+
 from __future__ import annotations
 from collections.abc import Iterator, Set as AbstractSet
 from functools import reduce
 from typing import (
-    AbstractSet,
     List,
     TypeVar,
     Callable,
@@ -49,9 +49,7 @@ class SupportsSafeGetItem(Protocol[T_co]):  # type: ignore
     def get(self, key: SupportsIndex) -> Res[T_co, Nil]: ...
 
 
-@dataclass(
-    frozen=True, eq=True, init=True, match_args=True, order=True, repr=True
-)
+@dataclass(frozen=True, eq=True, init=True, match_args=True, order=True, repr=True)
 class Pair(Tuple[K, T], Ad[T], Unwrap[T], MapAlt[T], UnwrapAlt[K]):
     """Wrapper for tuple key value pair with additional features and type safety
 
@@ -226,7 +224,6 @@ class Set(set[T], Collad[T]):
             Set[T]: Updated Set
         """
         return Set((t for t in self if predicate(t)))
-
 
     def fold(self, using: Callable[[T, T], T]) -> T:
         """Folds a function over the elements, returning its final result. Maps to `**` and `**=`
@@ -423,8 +420,8 @@ class Listad(List[T], Collad[T]):
             Res[T, Nil]: The retrieved value as an Opt[T]. Must be handled.
         """
         return self[index]
-    
-    @null_and_error_safe(IndexError) 
+
+    @null_and_error_safe(IndexError)
     def pop(self, index: SupportsIndex = -1) -> T:
         """Retrieves and removes an element from the Litad
 
@@ -432,7 +429,7 @@ class Listad(List[T], Collad[T]):
             index (SupportsIndex, optional): Index of the item to be popped out. Defaults to -1.
 
         Returns:
-            Res[T, Nil]: Res containing the popped value 
+            Res[T, Nil]: Res containing the popped value
         """
         return super().pop(index)
 
@@ -447,6 +444,7 @@ def flatten(iterable: Iterable[Iterable[T]]) -> Iterable[T]:
         Iterable[T]: Unnested iterable
     """
     return (elem for niter in iterable for elem in niter)
+
 
 def separate(iter_res: Iterable[Res[T, E]]) -> tuple[Listad[T], Listad[E]]:
     """Convenience func to separate Ok and Err into separate Listads
@@ -629,7 +627,6 @@ class Tuplad(Tuple[T], Collad[T]):
 
     def __add__(self, value: tuple[_S] | Tuplad[_S]) -> Tuplad[T | _S]:
         return Tuplad(super().__add__(value))
-    
 
 
 class Dictad(dict[K, T], Collad[T], MapAlt[K]):
@@ -816,15 +813,15 @@ class Dictad(dict[K, T], Collad[T], MapAlt[K]):
 
     def __or__(self, other: dict[L, U]) -> Dictad[K | L, T | U]:
         return Dictad(dict.__or__(self, other))
-    
+
     def copy(self) -> Dictad[K, T]:
         """Shallow copies the Dictad and returns it"""
         return Dictad(super().copy())
-    
+
     @staticmethod
     def fromkeys(keys: Iterable[K], value: T) -> Dictad[K, T]:
         return Dictad(dict.fromkeys(keys, value))
-    
+
     def __iter__(self) -> Iterator[K]:
         return super().__iter__()
 
