@@ -66,15 +66,15 @@ class MapAlt(Generic[T], ABC):
     """Defines behavior for `map_alt`, `^` and `^=`"""
 
     @abstractmethod
-    def __ixor__(self, using: Callable[[T], U]):
+    def __ixor__(self, using: Callable[[T], U]) -> Any:
         return self.map_alt(using)
 
     @abstractmethod
-    def __xor__(self, using: Callable[[T], U]):
+    def __xor__(self, using: Callable[[T], U]) -> Any:
         return self.map_alt(using)
 
     @abstractmethod
-    def map_alt(self, using: Callable[[T], U]):
+    def map_alt(self, using: Callable[[T], U]) -> Any:
         """Transforms alternate inner value and returns updated instance of self"""
         ...
 

@@ -1,8 +1,7 @@
 """Handle Exceptions and None values with `Res` type and decorators."""
+
 from __future__ import annotations
-from inspect import signature
 from typing import (
-    Iterable,
     Generic,
     TypeVar,
     Callable,
@@ -26,6 +25,7 @@ F = TypeVar("F", bound="Exception")
 G = TypeVar("G", bound="Exception")
 U = TypeVar("U")
 C = TypeVar("C")
+
 
 class UnwrapError(Exception):
     """Exception used for when a `Res` is unwrapped while in an unexpected state"""
@@ -89,11 +89,11 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
         >>> if not Res.Err(Exception('foo')):
         ...     'Err'
         'Err'
-    
+
     #### Iterate if Ok
 
     Iterate thru list, tuple, set, and normal values if OK ::
-    
+
         >>> ok = Res.Ok([1, 2, 3])
         >>> data = [i for i in ok]
         >>> data
@@ -102,13 +102,13 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
         >>> for val in res:
         ...     val
         1
-    
+
     Will iterate over nothing if in Err ::
 
         >>> err = Res[int, Exception].Err(Exception("Oops"))
         >>> for val in err:
         ...     val
-    
+
     #### Checking with `in` or `__contains__`
 
     You can check the `Ok` value with `in` ::
@@ -123,7 +123,7 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
         True
         >>> 4 in some_list
         False
-    
+
     Always returns `False` if in Err state
 
         >>> nil = Res[int, Nil].Nil()
@@ -133,7 +133,7 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
         >>> 10 in nil
         False
 
-    
+
     """
 
     inner: T | E
@@ -163,7 +163,6 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
             return item in self.inner
         else:
             return item in [self.inner]
-
 
     @overload
     def __iter__(self: Res[tuple[U], E]) -> Iterator[U]: ...
@@ -212,7 +211,7 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
 
         """
         if isinstance(value, Exception):
-            raise TypeError(f"Cannot pass an Exception child to Ok")
+            raise TypeError("Cannot pass an Exception child to Ok")
         return Res[T, E](value, True)
 
     @staticmethod
@@ -579,25 +578,25 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
             >>> ok <<= unwrap
             20
         """
-        sig = signature(using)
-        params = list(sig.parameters.keys())
-        param_len = len(params)
-        for ok in self:
-            if param_len == 1:
-                f = cast(Callable[[T], Res[U, F] | U], using)
-                out = f(ok)
-            elif param_len == 0:
-                f = cast(Callable[[], Res[U, F] | U], using)
-                out = f()
-            else:
-                raise ValueError(
-                    "Invalid func type. Must only contain 1 or 0 parameters."
-                )
 
-            if not isinstance(out, Res):
+        try:
+            f = cast(Callable[[T], U], using)
+            if self:
+                out = f(self.unwrap())
+                if isinstance(out, Res):
+                    return out
                 return Res.Ok(out)
-            return cast(Res[U, E | F], out)
-        return Res[U, E | F].Err(cast(E, self.inner))
+            else:
+                return Res.Err(self.unwrap_alt())
+        except TypeError:
+            f = cast(Callable[[], U], using)
+            if self:
+                out = f()
+                if isinstance(out, Res):
+                    return out
+                return Res.Ok(out)
+            else:
+                return Res.Err(self.unwrap_alt())
 
     @overload
     def __xor__(self, using: Callable[[], Res[U, F]]) -> Res[T | U, F]: ...
@@ -710,28 +709,24 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
             ValueError('Found None while expecting something')
 
         """
-        sig = signature(using)
-        params = list(sig.parameters.keys())
-        param_len = len(params)
-        if not self:
-            err = cast(E, self.inner)
-            if param_len == 1:
-                f = cast(Callable[[E], Res[U, F] | F], using)
-                out = f(err)
-            elif param_len == 0:
-                f = cast(Callable[[], Res[U, F] | U], using)
-                out = f()
-            else:
-                raise ValueError(
-                    "Invalid func type. Must only contain 1 or 0 parameters."
-                )
-
-            if not isinstance(out, Res):
+        try:
+            f = cast(Callable[[E], F], using)
+            if not self:
+                out = f(self.unwrap_alt())
+                if isinstance(out, Res):
+                    return out
                 return Res.Err(out)
-            return cast(Res[T | U, F], out)
-
-        ok = cast(T | U, self.inner)
-        return Res[T | U, F].Ok(ok)
+            else:
+                return Res.Ok(self.unwrap())
+        except TypeError:
+            f = cast(Callable[[], F], using)
+            if self:
+                out = f()
+                if isinstance(out, Res):
+                    return out
+                return Res.Err(out)
+            else:
+                return Res.Ok(self.unwrap())
 
     def convert_err(self, err_type: type[F]) -> Res[T, F]:
         """Converts an Exception of one type to another if Err
@@ -922,6 +917,7 @@ class Res(Ad[T], MapAlt[E], Unwrap[T], UnwrapAlt[E]):
                         raise Nil()
                     case ok:
                         return Res[U, F].Ok(ok)
+
 
 def safe(*err_type: type[E]):
     """Decorator function to catch raised ``Exception`` and return ``Res[T, E]``
@@ -1303,4 +1299,3 @@ def convert_err(err_type: type[F]):
         return err_type(str(e))
 
     return inner
-
