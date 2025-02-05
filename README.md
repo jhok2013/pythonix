@@ -325,7 +325,7 @@ with Pythonix.
 
 - [] Simplifying of names for Collections, Results, Trails, and Pipes
 - [] Better cohesion for Trail and other Collads
-- [] Adding Eager and Lazy modes for collections
+- [] Add Zad (Lazy Collection Monad)
 - [] Upgraded expect methods
 - [] Make E not exclusive to Exception types
 

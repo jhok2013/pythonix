@@ -1,10 +1,14 @@
 """Advanced versions of `list`, `tuple`, `dict`, and `deque` with builtin mapping, filtering, and folding"""
 
 from __future__ import annotations
+from abc import ABC
+from copy import deepcopy
 from collections.abc import Iterator, Set as AbstractSet
 from functools import reduce
 from typing import (
+    Generic,
     List,
+    cast,
     TypeVar,
     Callable,
     Tuple,
@@ -14,10 +18,10 @@ from typing import (
 )
 from typing_extensions import Self
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pythonix.internals.res import Res, Nil, catch_all, null_and_error_safe
 from pythonix.internals.utils import unwrap
-from pythonix.internals.traits import Collad, MapAlt, Unwrap, Ad, UnwrapAlt
+from pythonix.internals.traits import Collad, MapAlt, Unwrap, Ad, UnwrapAlt, Map, Where
 
 
 _KT = TypeVar("_KT")
@@ -47,6 +51,67 @@ class SupportsSafeGetItem(Protocol[T_co]):  # type: ignore
     def __getitem__(self, key: SupportsIndex) -> Res[T_co, Nil]: ...
 
     def get(self, key: SupportsIndex) -> Res[T_co, Nil]: ...
+
+
+class Step(ABC, Generic[T, U]):
+    op: Callable
+    __match_args__ = ("op",)
+
+
+@dataclass(frozen=True, match_args=True)
+class Bind(Step[T, U]):
+    op: Callable[[T], U]
+
+
+@dataclass(frozen=True, match_args=True)
+class Filter(Step[T, T]):
+    op: Callable[[T], bool]
+
+
+@dataclass(frozen=True, eq=True, match_args=True, repr=True)
+class Zad(Map[T], Where, Generic[T, U]):
+
+    data: Iterable[T] = tuple()
+    steps: deque[Step] = field(default_factory=deque)
+
+    def __new__(cls, data: Iterable[T]) -> Zad[T, T]:
+        obj = object.__new__(cls)
+        object.__setattr__(obj, "data", data)
+        object.__setattr__(obj, "steps", deque())
+        return cast(Zad[T, T], obj)
+
+    def __rshift__(self, using: Callable[[U], V]) -> Zad[T, V]:
+        return self.map(using)
+
+    def __irshift__(self, using: Callable[[U], V]) -> Zad[T, V]:
+        return self.map(using)
+
+    def map(self, using: Callable[[U], V]) -> Zad[T, V]:
+        self.steps.append(Bind(using))
+        return cast(Zad[T, V], self)
+
+    def __floordiv__(self, predicate: Callable[[U], bool]) -> Zad[T, U]:
+        return self.where(predicate)
+
+    def __ifloordiv__(self, predicate: Callable[[U], bool]) -> Zad[T, U]:
+        return self.where(predicate)
+
+    def where(self, predicate: Callable[[U], bool]) -> Zad[T, U]:
+        self.steps.append(Filter(predicate))
+        return cast(Zad[T, U], self)
+
+    def __iter__(self) -> Iterator[U]:
+
+        for element in self.data:
+            out = deepcopy(element)
+            for step in self.steps:
+                match step:
+                    case Bind(op):
+                        out = op(out)
+                    case Filter(predicate):
+                        if predicate(out):
+                            continue
+            yield cast(U, out)
 
 
 @dataclass(frozen=True, eq=True, init=True, match_args=True, order=True, repr=True)
