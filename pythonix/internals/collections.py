@@ -71,14 +71,10 @@ class Filter(Step[T, T]):
 @dataclass(frozen=True, eq=True, match_args=True, repr=True)
 class Zad(Map[T], Where, Generic[T, U]):
 
-    data: Iterable[T] = tuple()
-    steps: deque[Step] = field(default_factory=deque)
+    steps: tuple[Step, ...] = tuple()
 
-    def __new__(cls, data: Iterable[T]) -> Zad[T, T]:
-        obj = object.__new__(cls)
-        object.__setattr__(obj, "data", data)
-        object.__setattr__(obj, "steps", deque())
-        return cast(Zad[T, T], obj)
+    def __init__(self, *steps: Step) -> None:
+        object.__setattr__(self, "steps", steps)
 
     def __rshift__(self, using: Callable[[U], V]) -> Zad[T, V]:
         return self.map(using)
@@ -87,8 +83,7 @@ class Zad(Map[T], Where, Generic[T, U]):
         return self.map(using)
 
     def map(self, using: Callable[[U], V]) -> Zad[T, V]:
-        self.steps.append(Bind(using))
-        return cast(Zad[T, V], self)
+        return cast(Zad[T, V], *self.steps + (Bind(using),))
 
     def __floordiv__(self, predicate: Callable[[U], bool]) -> Zad[T, U]:
         return self.where(predicate)
@@ -97,12 +92,11 @@ class Zad(Map[T], Where, Generic[T, U]):
         return self.where(predicate)
 
     def where(self, predicate: Callable[[U], bool]) -> Zad[T, U]:
-        self.steps.append(Filter(predicate))
-        return cast(Zad[T, U], self)
+        return cast(Zad[T, U], *self.steps + (Filter(predicate),))
 
-    def __iter__(self) -> Iterator[U]:
+    def __call__(self, data: Iterable[T]) -> Iterator[U]:
 
-        for element in self.data:
+        for element in data:
             out = deepcopy(element)
             for step in self.steps:
                 match step:
