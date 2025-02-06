@@ -69,30 +69,36 @@ class Filter(Step[T, T]):
 
 
 @dataclass(frozen=True, eq=True, match_args=True, repr=True)
-class Zad(Map[T], Where, Generic[T, U]):
+class Plan(Map[T], Where, Generic[T, U]):
 
     steps: tuple[Step, ...] = tuple()
 
     def __init__(self, *steps: Step) -> None:
         object.__setattr__(self, "steps", steps)
 
-    def __rshift__(self, using: Callable[[U], V]) -> Zad[T, V]:
+    def __rshift__(self, using: Callable[[U], V]) -> Plan[T, V]:
         return self.map(using)
 
-    def __irshift__(self, using: Callable[[U], V]) -> Zad[T, V]:
+    def __irshift__(self, using: Callable[[U], V]) -> Plan[T, V]:
         return self.map(using)
 
-    def map(self, using: Callable[[U], V]) -> Zad[T, V]:
-        return cast(Zad[T, V], *self.steps + (Bind(using),))
+    def map(self, using: Callable[[U], V]) -> Plan[T, V]:
+        return cast(Plan[T, V], *self.steps + (Bind(using),))
 
-    def __floordiv__(self, predicate: Callable[[U], bool]) -> Zad[T, U]:
+    def __floordiv__(self, predicate: Callable[[U], bool]) -> Plan[T, U]:
         return self.where(predicate)
 
-    def __ifloordiv__(self, predicate: Callable[[U], bool]) -> Zad[T, U]:
+    def __ifloordiv__(self, predicate: Callable[[U], bool]) -> Plan[T, U]:
         return self.where(predicate)
 
-    def where(self, predicate: Callable[[U], bool]) -> Zad[T, U]:
-        return cast(Zad[T, U], *self.steps + (Filter(predicate),))
+    def where(self, predicate: Callable[[U], bool]) -> Plan[T, U]:
+        return cast(Plan[T, U], *self.steps + (Filter(predicate),))
+
+    def __ror__(self, data: Iterable[T]) -> Lazyad[T, U]:
+
+        lazy = Lazyad[T, U](data)
+        object.__setattr__(lazy, "plan", self)
+        return lazy
 
     def __call__(self, data: Iterable[T]) -> Iterator[U]:
 
@@ -106,6 +112,39 @@ class Zad(Map[T], Where, Generic[T, U]):
                         if predicate(out):
                             continue
             yield cast(U, out)
+
+
+@dataclass(frozen=True, match_args=True)
+class Lazyad(Map[T], Where, Generic[T, U]):
+
+    data: Iterable[T]
+    plan: Plan[T, U] = field(default=Plan(), init=False)
+
+    def __or__(self, applicator: Callable[[Iterator[U]], V]) -> V:
+        return applicator(iter(self))
+
+    def __rshift__(self, using: Callable[[U], V]) -> Lazyad[T, V]:
+        return self.map(using)
+
+    def __irshift__(self, using: Callable[[U], V]) -> Lazyad[T, V]:
+        return self.map(using)
+
+    def map(self, using: Callable[[U], V]) -> Lazyad[T, V]:
+        self.plan.map(using)
+        return cast(Lazyad[T, V], self)
+
+    def __floordiv__(self, predicate: Callable[[U], bool]) -> Lazyad[T, U]:
+        return self.where(predicate)
+
+    def __ifloordiv__(self, predicate: Callable[[U], bool]) -> Lazyad[T, U]:
+        return self.where(predicate)
+
+    def where(self, predicate: Callable[[U], bool]) -> Lazyad[T, U]:
+        self.plan.where(predicate)
+        return cast(Lazyad[T, U], self)
+
+    def __iter__(self) -> Iterator[U]:
+        return self.plan(self.data)
 
 
 @dataclass(frozen=True, eq=True, init=True, match_args=True, order=True, repr=True)
